@@ -1,0 +1,2024 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EI-idiom</title>
+
+  <style>
+    /* =========================================================
+       基本（ライト） ※熟語アプリの見た目・配置に合わせる
+     ========================================================= */
+    body{
+      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #ffffff;
+      color: #111;
+      transition: background .2s ease, color .2s ease;
+    }
+
+    .card{
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 18px;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      background: #fff;
+      transition: background .2s ease, border-color .2s ease;
+    }
+
+    .top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      /* gap:12px; */
+      flex-wrap:wrap;
+    }
+
+    .badge{
+      font-size: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: transparent;
+      transition: background .2s ease, border-color .2s ease, color .2s ease;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 10px;
+    }
+
+    .word{
+      font-size: 36px;
+      font-weight: 800;
+      margin: 18px 0 10px;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .meaning{
+      font-size: 28px;
+      margin: 10px 0 0;
+      min-height: 40px;
+      word-break: break-word;
+    }
+
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top: 16px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      font-size: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      transition: background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    button:active{ transform: translateY(1px); }
+
+    .primary{ font-weight: 800; }
+    .danger{ border-color:#f2c; }
+    .toggle{ border-color:#88c; }
+    .small{ font-size: 14px; padding: 10px 12px; border-radius: 12px; }
+
+    /* 間違いチェック（答え合わせ時だけ表示） */
+    .missBox{
+      display:none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: nowrap;
+      /* transition: background .2s ease, border-color .2s ease, color .2s ease; */
+        width: fit-content;      /* ★ 中身に合わせる */
+        max-width: 100%;         /* ★ 画面からはみ出さない保険 */
+        flex: 0 0 auto;          /* ★ 親がflexでも伸びない */
+        align-self: flex-start;  /* ★ 親がstretchでも伸びない */
+    }
+    .missBox.show{ display:inline-flex; }
+    .missBox input{ width: 22px; height: 22px; }
+    .missBox .label{ font-size: 16px; user-select: none; white-space: nowrap; display: inline-block;}
+
+    /* =========================================================
+       ダークモード（bodyに .dark を付ける）
+     ========================================================= */
+    body.dark{
+      background: #0f1115;
+      color: #e9e9ea;
+    }
+    body.dark .card{
+      background: #171a21;
+      border-color: #2a2f3a;
+    }
+    body.dark .badge{
+      border-color: #2a2f3a;
+      background: rgba(255,255,255,0.03);
+      color: #d6d6d8;
+    }
+    body.dark button{
+      background: #1f2430;
+      border-color: #2a2f3a;
+      color: #e9e9ea;
+    }
+    body.dark button:hover{ background: #252b3a; }
+    body.dark .missBox{
+      border-color: #2a2f3a;
+      background: rgba(255,255,255,0.03);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="badge" id="progress">0 / 0</div>
+
+      <div class="row">
+        <button class="toggle small" id="audioToggle">🔊 発音：ON</button>
+        <button class="toggle small" id="themeToggle">🌙 ダーク</button>
+      </div>
+    </div>
+
+
+  <!-- <div class="card">
+    <div class="top">
+      <div class="badge" id="progress">0 / 0</div>
+      <div class="badge" id="mode">単語：英→日</div>
+    </div> -->
+
+    <!-- 発音ON/OFF + テーマ切替（熟語アプリと同じ位置） -->
+    <!-- <div class="row">
+      <button class="toggle small" id="audioToggle">🔊 発音：ON</button>
+      <button class="toggle small" id="themeToggle">🌙 ダーク</button>
+    </div> -->
+
+    <!-- 出題モード切替（全 / 間違いのみ） -->
+    <div class="row">
+      <label class="badge" style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" id="wrongOnlyToggle" style="width:18px;height:18px;" />
+       復習開始
+        <span class="count" id="wrongCount">（0）</span>
+      </label>
+      <!-- <div class="badge" id="wrongCount">間違い: 0</div> -->
+      <button class="small danger" id="clearWrongBtn" type="button">リスト消去</button>
+    </div>
+
+    <div class="word" id="word">（reading…）</div>
+    <div class="meaning" id="meaning"></div>
+
+    <!-- ★答え合わせ表示中だけ出る：間違えたチェック -->
+    <div class="missBox" id="missBox">
+      <input type="checkbox" id="missToggle">
+      <label class="label" for="missToggle">復習リストに追加</label>
+    </div>
+
+    <!-- 次へ / 発音 / リセット -->
+    <div class="btns">
+      <button class="primary" id="nextBtn">はじめる</button>
+      <button id="speakBtn">🔊 発音</button>
+      <button id="resetBtn" class="danger">リセット（最初から）</button>
+    </div>
+  </div>
+
+<script>
+/**
+ * ▼単語リスト（650語）
+ * 形式： { en: "apple", ja: "りんご" }
+ */
+const VOCAB = [
+  { en: "a bit of A", ja: "少しのA" },
+  { en: "a body of A", ja: "大量のAのかたまり" },
+  { en: "a couple of A", ja: "2つのA" },
+  { en: "a crowd of A", ja: "多数のA" },
+  { en: "A drowning man will catch at a straw", ja: "溺れる者はわらをもつかもうとする" },
+  { en: "a great [good] deal", ja: "おおいに" },
+  { en: "a great [good] deal of A", ja: "多くのA" },
+  { en: "a handful of A", ja: "少数のA" },
+  { en: "a host of A", ja: "多数のA" },
+  { en: "a large [great] number of A", ja: "多数のA" },
+  { en: "a large [small] amount of A", ja: "多[少]量のA" },
+  { en: "a large [small] sum of A", ja: "多[少]額のA" },
+  { en: "a lot", ja: "おおいに" },
+  { en: "a lot of A", ja: "たくさんのA" },
+  { en: "a number of A", ja: "多数のA" },
+  { en: "a pair of A", ja: "一対のA" },
+  { en: "a piece of A", ja: "1つのA" },
+  { en: "a sheet of A", ja: "1枚のA" },
+  { en: "a touch of A", ja: "少量のA" },
+  { en: "abide by A", ja: "Aに従う" },
+  { en: "(be) about to V", ja: "Vしようとしている" },
+  { en: "above all", ja: "とりわけ" },
+  { en: "(be) absent from A", ja: "Aを欠席している" },
+  { en: "(be) absorbed in A", ja: "Aに熱中している" },
+  { en: "accept A as B", ja: "AをBとして受け入れる" },
+  { en: "according to A", ja: "Aによれば" },
+  { en: "account for A", ja: "①Aを占める ②Aを説明する" },
+  { en: "accuse A of B", ja: "BのことでAを非難する" },
+  { en: "(be) accustomed to A [Ving]", ja: "A（Vすること）に慣れている" },
+  { en: "(be) acquainted with A", ja: "Aに精通している" },
+  { en: "act on A", ja: "Aに作用する" },
+  { en: "adapt A to B", ja: "AをBに合わせる" },
+  { en: "adapt (oneself) to A", ja: "Aに適応する" },
+  { en: "add A to B", ja: "AをBに加える" },
+  { en: "add to A", ja: "Aを増やす" },
+  { en: "add up to A", ja: "Aに達する" },
+  { en: "(be) addicted to A", ja: "Aの中毒になっている" },
+  { en: "adhere to A", ja: "Aに固執する" },
+  { en: "adjust to A", ja: "Aに適応する" },
+  { en: "(be) afraid of A", ja: "Aを恐れている" },
+  { en: "(be) afraid to V", ja: "こわくてVできない" },
+  { en: "after all", ja: "①だって ②結局" },
+  { en: "again and again", ja: "何度も" },
+  { en: "against one’s will", ja: "意志に反して" },
+  { en: "agree with A", ja: "Aと一致する；Aに合う" },
+  { en: "aim at A", ja: "Aをねらう" },
+  { en: "(be) aimed at A", ja: "A向けだ" },
+  { en: "all along", ja: "初めからずっと" },
+  { en: "all at once", ja: "突然" },
+  { en: "all but", ja: "ほとんど" },
+  { en: "all but A", ja: "A以外すべて" },
+  { en: "all day (long)", ja: "一日中" },
+  { en: "(be) all ears [eyes]", ja: "非常に注意深く聞く［見る］" },
+  { en: "all in all", ja: "全体から見て" },
+  { en: "all of a sudden", ja: "突然" },
+  { en: "all over (A)", ja: "（Aの）いたるところで" },
+  { en: "all the same", ja: "にもかかわらず" },
+  { en: "all the time (～)", ja: "①いつも ②～している間中" },
+  { en: "all the way", ja: "ずっと" },
+  { en: "all the +", ja: "比較級 + 理由 （…だから）なおさら～" },
+  { en: "all too A", ja: "まったくAすぎる" },
+  { en: "allow for A", ja: "Aを考慮に入れる" },
+  { en: "among other things", ja: "とりわけ" },
+  { en: "amount to A", ja: "Aに達する" },
+  { en: "A, B, and so on", ja: "AやBなど" },
+  { en: "(be) angry about [at] A", ja: "Aに腹を立てている" },
+  { en: "(be) angry with [at] A", ja: "Aに腹を立てている" },
+  { en: "(be) anxious about A", ja: "Aを心配している" },
+  { en: "(be) anxious for A", ja: "Aを熱望している" },
+  { en: "(be) anxious to V", ja: "Vしたがる" },
+  { en: "any time (～)", ja: "①いつでも ②～するたびに" },
+  { en: "anything but A", ja: "決してAではない" },
+  { en: "apart from A", ja: "Aは別として" },
+  { en: "apologize (to A) for B", ja: "（Aに）Bのことで謝る" },
+  { en: "apply A to B", ja: "AをBに適用する" },
+  { en: "apply for A", ja: "Aに申し込む" },
+  { en: "apply oneself to A", ja: "Aに専念する" },
+  { en: "apply to A", ja: "Aに当てはまる" },
+  { en: "approve of A", ja: "Aに賛成する" },
+  { en: "(be) apt to V", ja: "Vしがちだ" },
+  { en: "argue with A", ja: "Aと口論する" },
+  { en: "arm in arm (with A)", ja: "（Aと）腕を組んで" },
+  { en: "as a matter of course", ja: "当然のこととして" },
+  { en: "as a matter of fact", ja: "実を言うと" },
+  { en: "as a result", ja: "その結果" },
+  { en: "as a rule", ja: "たいてい" },
+  { en: "as a whole", ja: "全体として" },
+  { en: "as follows", ja: "次の通り" },
+  { en: "as for A", ja: "Aについては" },
+  { en: "as good as A", ja: "Aも同然" },
+  { en: "as if [though] ～", ja: "まるで～のように" },
+  { en: "as is often the case (with A)", ja: "（Aには）よくあることだが" },
+  { en: "as it were", ja: "いわば" },
+  { en: "as many [much] as A", ja: "Aほども多くの" },
+  { en: "as of A", ja: "A時点で" },
+  { en: "as often as not", ja: "しばしば" },
+  { en: "as opposed to A", ja: "Aではなくて" },
+  { en: "as [so] far as ～", ja: "～する範囲では" },
+  { en: "as [so] long as ～", ja: "～しさえすれば" },
+  { en: "as soon as ～", ja: "～したとたん" },
+  { en: "as such", ja: "そういうものとして；それ自体" },
+  { en: "as to A", ja: "Aについて" },
+  { en: "as well as ～", ja: "～と同様；～もまた" },
+  { en: "as yet", ja: "今までのところ" },
+  { en: "ascribe A to B", ja: "Aの原因はBだと考える" },
+  { en: "(be) ashamed of A", ja: "Aを恥じている" },
+  { en: "aside from A", ja: "Aは別として" },
+  { en: "ask A for B", ja: "AにBを求める" },
+  { en: "ask A out", ja: "Aを外出に誘う" },
+  { en: "ask a favor of A", ja: "Aに頼み事をする" },
+  { en: "(be) associated with A", ja: "Aと関係づけられる" },
+  { en: "(be) attached to A", ja: "Aに愛着を持っている" },
+  { en: "(be) at A’s best", ja: "Aの最盛期である" },
+  { en: "(be) at A’s disposal", ja: "Aが自由にできる" },
+  { en: "at a glance", ja: "ちらっと見て" },
+  { en: "(be) at a loss", ja: "途方に暮れている" },
+  { en: "at a time", ja: "一度に" },
+  { en: "at all", ja: "①まったく ②いったい ③いやしくも" },
+  { en: "at all costs", ja: "何を犠牲にしても" },
+  { en: "at all events", ja: "とにかく" },
+  { en: "at any cost", ja: "どんな犠牲をはらっても" },
+  { en: "at any moment", ja: "いつなんどきでも" },
+  { en: "at any rate", ja: "とにかく" },
+  { en: "at best", ja: "いちばんよくても" },
+  { en: "(be) at ease", ja: "くつろいでいる" },
+  { en: "at first", ja: "最初は" },
+  { en: "at first glance", ja: "一目見て" },
+  { en: "at first sight", ja: "一目見て，一見すると" },
+  { en: "at hand", ja: "近くに" },
+  { en: "at heart", ja: "心の底では" },
+  { en: "(be) at home (in A)", ja: "くつろいでいる／（Aに）精通している" },
+  { en: "at intervals", ja: "時々" },
+  { en: "at issue", ja: "問題になっている" },
+  { en: "at large", ja: "一般の" },
+  { en: "at last", ja: "ついに" },
+  { en: "at least", ja: "少なくとも" },
+  { en: "at length", ja: "くわしく" },
+  { en: "at (the) most", ja: "せいぜい" },
+  { en: "at odds (with A)", ja: "（Aと）食い違って" },
+  { en: "at once", ja: "すぐに" },
+  { en: "at one time", ja: "かつて" },
+  { en: "(be) at peace", ja: "平和だ" },
+  { en: "(be) at play", ja: "遊んでいる" },
+  { en: "at present", ja: "今のところは" },
+  { en: "at random", ja: "無作為に" },
+  { en: "(be) at rest", ja: "休んでいる" },
+  { en: "(be) at risk", ja: "危険にさらされている" },
+  { en: "(be) at school", ja: "在学中である" },
+  { en: "(be) at sea", ja: "航海に出ている" },
+  { en: "(be) at stake", ja: "危険にさらされている" },
+  { en: "(be) at (the) table", ja: "食事中である" },
+  { en: "at the age of A", ja: "A歳で" },
+  { en: "at the cost of A", ja: "Aを犠牲にして" },
+  { en: "at the expense of A", ja: "Aを犠牲にして" },
+  { en: "(be) at the mercy of A", ja: "Aのなすがままである" },
+  { en: "at the moment", ja: "今は" },
+  { en: "at the sight of A", ja: "Aを見て" },
+  { en: "at the thought of A", ja: "Aのことを考えると" },
+  { en: "at times", ja: "時々" },
+  { en: "(be) at war", ja: "戦争状態である" },
+  { en: "at will", ja: "意のままに" },
+  { en: "(be) at work", ja: "働いている" },
+  { en: "at worst", ja: "最悪でも" },
+  { en: "attach A to B", ja: "AをBにくっつける" },
+  { en: "attend to A", ja: "Aに注意する／Aを世話する" },
+  { en: "attribute A to B", ja: "Aの原因はBだと考える" },
+  { en: "avail oneself of A", ja: "Aを利用する" },
+  { en: "(be) aware of A", ja: "Aを意識している" },
+  { en: "back and forth", ja: "行ったり来たり" },
+  { en: "(be) bad at A", ja: "Aが苦手である" },
+  { en: "ban A from Ving", ja: "AがVするのを禁止する" },
+  { en: "bar A from Ving", ja: "AがVするのを禁止する" },
+  { en: "(be) based on A", ja: "Aに基づいている" },
+  { en: "beat around the bush", ja: "遠回しに言う" },
+  { en: "become of A", ja: "Aに起こる" },
+  { en: "beg for A", ja: "Aを乞う" },
+  { en: "behind A’s back", ja: "Aのいないところで" },
+  { en: "(be) behind schedule", ja: "予定より遅れて" },
+  { en: "(be) behind the times", ja: "時流に遅れた" },
+  { en: "believe in A", ja: "Aの存在を信じる" },
+  { en: "belong to A", ja: "Aに属する" },
+  { en: "(be) bent on A [Ving]", ja: "Aに熱心だ／Vする決心だ" },
+  { en: "(be) beside oneself (with A)", ja: "（Aで）我を忘れている" },
+  { en: "(be) better off", ja: "暮らし向きがよくなる" },
+  { en: "between ourselves", ja: "私たちだけの（秘密で）" },
+  { en: "between you and me", ja: "あなたと私だけの（秘密で）" },
+  { en: "beware of A", ja: "Aに用心する" },
+  { en: "(be) beyond description", ja: "言葉では表せない" },
+  { en: "beyond doubt", ja: "疑いなく" },
+  { en: "blame A for B", ja: "BのことでAを責める" },
+  { en: "blame A on B", ja: "AをBのせいにする" },
+  { en: "A (be) blessed with B", ja: "AがBに恵まれている" },
+  { en: "blow A out", ja: "Aを吹き消す" },
+  { en: "blow (A) up", ja: "Aを爆破する／爆発する" },
+  { en: "boast of [about] A", ja: "Aを自慢する" },
+  { en: "boast that ~", ja: "～だと自慢する" },
+  { en: "(be) bored with A", ja: "Aにうんざりしている" },
+  { en: "(be) born of A", ja: "Aから生まれる" },
+  { en: "(be) bound for A", ja: "A行きである" },
+  { en: "(be) bound to V", ja: "きっとVする" },
+  { en: "break A into [to] pieces", ja: "Aを粉々にする" },
+  { en: "break A up", ja: "Aをばらばらにする" },
+  { en: "break down", ja: "故障して止まる" },
+  { en: "break in", ja: "横から口をはさむ" },
+  { en: "break into A", ja: "突然Aをし始める" },
+  { en: "break (A) off", ja: "（Aを）断つ" },
+  { en: "break one’s promise (to A)", ja: "（Aとの）約束を破る" },
+  { en: "break one’s word", ja: "約束を破る" },
+  { en: "break out", ja: "急に起こる" },
+  { en: "break (one’s) silence", ja: "沈黙を破る" },
+  { en: "break the ice", ja: "（話の）口火を切る" },
+  { en: "break up", ja: "別れる" },
+  { en: "break with A", ja: "Aと絶交する" },
+  { en: "bring A about", ja: "Aをもたらす" },
+  { en: "bring A back", ja: "Aを思い出させる" },
+  { en: "bring A home to B", ja: "AをBに痛切に感じさせる" },
+  { en: "bring A into being [existence]", ja: "Aを生み出す" },
+  { en: "bring A out", ja: "①Aを出版する ②Aを明らかにする" },
+  { en: "bring A to an end", ja: "Aを終わらせる" },
+  { en: "bring A to life", ja: "Aを活気づかせる" },
+  { en: "bring A to light", ja: "Aを明るみに出す" },
+  { en: "bring A to mind", ja: "Aを思い出させる" },
+  { en: "bring A up", ja: "①Aを育てる ②Aを提起する" },
+  { en: "bring in A", ja: "Aを稼ぐ" },
+  { en: "bring oneself to V", ja: "Vする気になる" },
+  { en: "brush A up", ja: "Aを勉強しなおす" },
+  { en: "burn (A) down", ja: "全焼する／Aを全焼させる" },
+  { en: "burn out", ja: "燃えつきる" },
+  { en: "burst [break] into tears", ja: "急に泣き出す" },
+  { en: "burst into laughter", ja: "わっと笑い出す" },
+  { en: "burst out Ving", ja: "急にVし始める" },
+  { en: "(be) busy Ving", ja: "Vするのに忙しい" },
+  { en: "(be) busy with A", ja: "Aで忙しい" },
+  { en: "but for A", ja: "もしAがなければ" },
+  { en: "buy A for B", ja: "AをBで買う" },
+  { en: "by accident", ja: "偶然に" },
+  { en: "by air [car, bus]", ja: "飛行機で［車で、バスで］" },
+  { en: "by all means", ja: "①ぜひどうぞ ②必ず" },
+  { en: "by and by", ja: "やがて" },
+  { en: "by and large", ja: "大体" },
+  { en: "by chance", ja: "偶然に" },
+  { en: "by degrees", ja: "徐々に" },
+  { en: "by far", ja: "断然" },
+  { en: "by hand", ja: "手で" },
+  { en: "by means of A", ja: "Aを用いて" },
+  { en: "by mistake", ja: "まちがって" },
+  { en: "by nature", ja: "生まれつき" },
+  { en: "by no means", ja: "決して〜ない" },
+  { en: "by oneself", ja: "ひとりで" },
+  { en: "by the A", ja: "A単位で" },
+  { en: "by the time ~", ja: "〜する時までには" },
+  { en: "by the way", ja: "ところで" },
+  { en: "by turns", ja: "交代で" },
+  { en: "by virtue of A", ja: "Aを用いて" },
+  { en: "by way of A", ja: "Aを通って" },
+  { en: "call A off", ja: "Aを中止する" },
+  { en: "call A up", ja: "Aに電話する" },
+  { en: "call at A", ja: "Aを訪問する" },
+  { en: "call (A) back", ja: "(Aに)電話をかけ直す" },
+  { en: "call for A", ja: "Aを要求する／Aを必要とする" },
+  { en: "call on A", ja: "Aを訪問する" },
+  { en: "calm (A) down", ja: "自落ち着く／他Aを落ち着かせる" },
+  { en: "can tell A apart", ja: "Aを区別できる" },
+  { en: "can tell A from B", ja: "AとBを区別できる" },
+  { en: "can't help it", ja: "しかたがない" },
+  { en: "cannot but V", ja: "Vせずにいられない" },
+  { en: "cannot help but V", ja: "Vせずにいられない" },
+  { en: "cannot help Ving", ja: "Vせずにいられない" },
+  { en: "cannot … too ～", ja: "いくら～でも…しすぎることはない" },
+  { en: "care about A", ja: "Aを心配する" },
+  { en: "care for A", ja: "Aの世話をする" },
+  { en: "carry A out", ja: "Aを実行する" },
+  { en: "carry on Ving [A]", ja: "V［A］し続ける" },
+  { en: "catch A by the B", ja: "AのBをつかむ" },
+  { en: "catch A Ving", ja: "AがVしているのを見つける" },
+  { en: "catch fire", ja: "火がつく" },
+  { en: "catch on", ja: "浸透する" },
+  { en: "catch sight of A", ja: "Aを見つける" },
+  { en: "catch up", ja: "Aの不足を取り戻す" },
+  { en: "catch up on A", ja: "Aの遅れを取り戻す" },
+  { en: "catch up with A", ja: "Aに追いつく" },
+  { en: "(be) caught in A", ja: "Aにあう" },
+  { en: "(be) certain of A", ja: "Aを確信している" },
+  { en: "(S) be certain to (V)", ja: "必ずVする" },
+  { en: "(The) chances are (that) ～", ja: "おそらく～だろう" },
+  { en: "change A into B", ja: "AをBに変える" },
+  { en: "A change into B", ja: "AがBに変わる" },
+  { en: "(be) characteristic of A", ja: "Aに特有である" },
+  { en: "(be) charged with A", ja: "Aで告訴される" },
+  { en: "cheer (A) up", ja: "自元気を出す／他Aを励ます" },
+  { en: "clear A of B", ja: "AからBを取り除く" },
+  { en: "clear A up", ja: "Aを解決する" },
+  { en: "clear up", ja: "晴れる" },
+  { en: "cling to A", ja: "Aにくっつく" },
+  { en: "close to A", ja: "Aのすぐ近くに" },
+  { en: "coincide with A", ja: "Aと一致する" },
+  { en: "come about", ja: "生じる" },
+  { en: "come across A", ja: "Aに偶然出くわす" },
+  { en: "come across as A", ja: "Aと思われる" },
+  { en: "come alive", ja: "活気づく" },
+  { en: "A come back", ja: "Aが思い出される" },
+  { en: "come by A", ja: "Aを偶然手に入れる" },
+  { en: "come close to Ving", ja: "Vしそうになる" },
+  { en: "come down with A", ja: "Aにかかる" },
+  { en: "come easy", ja: "やさしくなる" },
+  { en: "come from A", ja: "Aの出身である" },
+  { en: "A come home to B", ja: "AがBに痛切に感じられる" },
+  { en: "come into being [existence]", ja: "生まれる，出現する" },
+  { en: "come into [in] contact with A", ja: "Aに接する" },
+  { en: "come near to Ving", ja: "Vしそうになる" },
+  { en: "come of age", ja: "成人する" },
+  { en: "come off", ja: "とれる" },
+  { en: "Come on!", ja: "よせよ" },
+  { en: "A come out", ja: "①Aが出版される ②Aが明らかになる" },
+  { en: "come [spring] into view", ja: "見えてくる" },
+  { en: "come to", ja: "意識を取り戻す" },
+  { en: "A come to an end", ja: "Aが終わる" },
+  { en: "A come to life", ja: "Aが活気づく" },
+  { en: "A come to light", ja: "Aが明るみに出る" },
+  { en: "A come to mind", ja: "Aが思い出される" },
+  { en: "come to one’s senses", ja: "意識を取り戻す" },
+  { en: "come to terms with A", ja: "Aを受け入れる" },
+  { en: "come to the conclusion that ～", ja: "～という結論に達する" },
+  { en: "come to think of it", ja: "もう一度考えると" },
+  { en: "A come to V", ja: "AがVするようになる" },
+  { en: "come true", ja: "実現する" },
+  { en: "A come up", ja: "Aが生じる" },
+  { en: "come up with A", ja: "Aを思いつく" },
+  { en: "(be) common to A", ja: "Aに共通している" },
+  { en: "compare A to B", ja: "AをBにたとえる" },
+  { en: "compare A with [to] B", ja: "AとBを比べる" },
+  { en: "compared with [to] A", ja: "Aに比べると" },
+  { en: "(be) compelled to V", ja: "Vせざるをえない" },
+  { en: "compensate for A", ja: "Aを埋め合わせる" },
+  { en: "compete with A", ja: "Aと競争する" },
+  { en: "complain of [about] A", ja: "Aについて不平を言う" },
+  { en: "complain that ～", ja: "～だと不平を言う" },
+  { en: "comply with A", ja: "Aに従う" },
+  { en: "(be) composed of A", ja: "Aで構成されている" },
+  { en: "concentrate on A", ja: "Aに集中する" },
+  { en: "(be) concerned about A", ja: "Aを心配している" },
+  { en: "(be) concerned with A", ja: "①Aと関係がある ②Aに関心がある" },
+  { en: "confine A to B", ja: "AをBの範囲に限定する" },
+  { en: "conform to A", ja: "Aにしたがう" },
+  { en: "(be) confronted with A", ja: "Aに直面している" },
+  { en: "(be) connected with A", ja: "Aと関係がある" },
+  { en: "(be) conscious of A", ja: "Aを意識している" },
+  { en: "consist in A", ja: "Aに存在する" },
+  { en: "consist of A", ja: "Aで構成されている" },
+  { en: "contend with A", ja: "Aと論争する" },
+  { en: "(be) content with A", ja: "Aに満足している" },
+  { en: "(be) contrary to A", ja: "Aに反している" },
+  { en: "contribute to A", ja: "Aの一因となる" },
+  { en: "convert A into B", ja: "AをBに変える" },
+  { en: "convince A of B", ja: "AにBを信じさせる" },
+  { en: "convince A that ～", ja: "Aに～を信じさせる" },
+  { en: "(be) convinced of A", ja: "Aを信じている" },
+  { en: "cope with A", ja: "Aにうまく対処する" },
+  { en: "correspond to A", ja: "Aに一致する" },
+  { en: "correspond with A", ja: "Aと一致する" },
+  { en: "couldn't be better", ja: "最高だ" },
+  { en: "count for A", ja: "Aだけの価値がある" },
+  { en: "count on A", ja: "Aをあてにする" },
+  { en: "A (be) covered with B", ja: "AがBでおおわれている" },
+  { en: "criticize A for B", ja: "BのことでAを批判する" },
+  { en: "A (be) crowded with B", ja: "AがBでいっぱいだ" },
+  { en: "(be) cruel to A", ja: "Aに残酷である" },
+  { en: "cry for A", ja: "Aを求めて叫ぶ" },
+  { en: "cure A of B", ja: "AのBをなおす" },
+  { en: "cut A down", ja: "Aを削減する" },
+  { en: "date from A", ja: "Aにさかのぼる" },
+  { en: "dawn on [upon] A", ja: "Aにわかりはじめる" },
+  { en: "day by day", ja: "日一日と" },
+  { en: "deal in A", ja: "Aを扱う" },
+  { en: "deal with A", ja: "Aを扱う，処理する" },
+  { en: "decide on A", ja: "Aを決める" },
+  { en: "define A as B", ja: "AをBと定義する" },
+  { en: "depend on A", ja: "Aしだいだ" },
+  { en: "depend on A for B", ja: "Aに頼ってBを求める" },
+  { en: "(be) dependent on A", ja: "Aに依存している" },
+  { en: "deprive A of B", ja: "AからBを奪う" },
+  { en: "derive from A", ja: "Aに由来する" },
+  { en: "(be) devoid of A", ja: "Aが欠けている" },
+  { en: "devote oneself to A", ja: "Aに専念する" },
+  { en: "die from A", ja: "Aが原因で死ぬ" },
+  { en: "die of A", ja: "Aで死ぬ" },
+  { en: "die out", ja: "絶滅する" },
+  { en: "differ from A", ja: "Aと異なる" },
+  { en: "(be) different from A", ja: "Aと違っている" },
+  { en: "dispense with A", ja: "Aなしですます" },
+  { en: "dispose of A", ja: "Aを処分する" },
+  { en: "distinguish A from B", ja: "AとBとを区別する" },
+  { en: "divide A into B", ja: "AをBに分割する" },
+  { en: "do A a favor", ja: "Aの頼みをきく" },
+  { en: "do A damage", ja: "Aに損害を与える" },
+  { en: "do A good", ja: "Aに利益をもたらす" },
+  { en: "do A harm", ja: "Aに害を与える" },
+  { en: "do A justice", ja: "Aを公正に扱う" },
+  { en: "do away with A", ja: "Aを廃止する" },
+  { en: "do (A) more harm than good", ja: "（Aの）益になるより害の方が大きい" },
+  { en: "do nothing but V", ja: "Vばかりする" },
+  { en: "do one’s best (to V)", ja: "（Vするのに）最善を尽くす" },
+  { en: "do one’s duty", ja: "義務を果たす" },
+  { en: "do the cooking", ja: "料理をする" },
+  { en: "do the dishes", ja: "食器を洗う" },
+  { en: "do the shopping", ja: "買い物をする" },
+  { en: "do without A", ja: "Aなしですます" },
+  { en: "dozens of A", ja: "多数のA" },
+  { en: "(be) dressed in A", ja: "Aを身に着けている" },
+  { en: "drive at A", ja: "Aを言おうとする" },
+  { en: "drop in at A", ja: "Aに立ち寄る" },
+  { en: "drop in on A", ja: "Aをちょっと訪れる" },
+  { en: "drop out (of A)", ja: "（Aを）途中でやめる" },
+  { en: "dry up", ja: "干上がる" },
+  { en: "(be) due to A", ja: "Aのため（である）" },
+  { en: "dwell on A", ja: "Aについて長々と述べる" },
+  { en: "each [every] time (～)", ja: "①そのたびに ②～するたびに" },
+  { en: "(be) eager for A", ja: "Aを切望している" },
+  { en: "(S) (be) eager to (V)", ja: "Vしたがる" },
+  { en: "early on", ja: "早い時期に" },
+  { en: "(O) (be) easy to (V)", ja: "OをVするのは簡単だ" },
+  { en: "eat A up", ja: "Aを食べつくす" },
+  { en: "end in A", ja: "Aという形で終わる" },
+  { en: "end up ～", ja: "ついにはVすることになる" },
+  { en: "(be) endowed with A", ja: "Aに恵まれた" },
+  { en: "engage in A", ja: "Aに参加する" },
+  { en: "(be) engaged in A", ja: "Aに従事している" },
+  { en: "enjoy oneself", ja: "楽しくすごす" },
+  { en: "enter into A", ja: "Aを結ぶ" },
+  { en: "(be) envious of A", ja: "Aをうらやんでいる" },
+  { en: "(be) equal to A", ja: "Aに等しい" },
+  { en: "A (be) equipped with B", ja: "AがBを備えている" },
+  { en: "(be) equivalent to A", ja: "Aに等しい" },
+  { en: "(be) essential to A", ja: "Aにとって不可欠である" },
+  { en: "every other day", ja: "1日おきに" },
+  { en: "except for A", ja: "Aを除けば" },
+  { en: "exchange A for B", ja: "AをBと交換する" },
+  { en: "excuse A for B", ja: "BのことでAを許す" },
+  { en: "face to face", ja: "面と向かって" },
+  { en: "(be) faced with A", ja: "Aに直面している" },
+  { en: "fade away", ja: "消えてゆく" },
+  { en: "fail in A", ja: "Aに失敗する" },
+  { en: "fall asleep", ja: "寝入る" },
+  { en: "fall back on A", ja: "Aに頼る" },
+  { en: "fall behind (A)", ja: "（Aに）遅れる" },
+  { en: "fall ill [sick]", ja: "病気になる" },
+  { en: "fall in love with A", ja: "Aに恋する，ほれる" },
+  { en: "fall on A", ja: "Aにあたる" },
+  { en: "fall on deaf ears", ja: "無視される" },
+  { en: "fall short of A", ja: "Aに達しない" },
+  { en: "fall victim [prey] to A", ja: "Aの犠牲になる" },
+  { en: "A (be) familiar to B", ja: "AがBによく知られている" },
+  { en: "B (be) familiar with A", ja: "BがAをよく知っている" },
+  { en: "(be) famous for A", ja: "Aで有名である" },
+  { en: "far from A", ja: "決してAでない" },
+  { en: "(be) fed up with A", ja: "Aにうんざりしている" },
+  { en: "feed A with B", ja: "AにBを与える" },
+  { en: "feed on A", ja: "Aを食べて生きる" },
+  { en: "feel (sorry) for A", ja: "Aに同情する" },
+  { en: "feel free to V", ja: "遠慮せずVする" },
+  { en: "feel ill at ease", ja: "落ち着かない" },
+  { en: "feel like Ving", ja: "Vしたい気がする" },
+  { en: "feel one’s way", ja: "手探りで進む" },
+  { en: "fight with A", ja: "Aと戦う" },
+  { en: "figure A out", ja: "Aを理解する" },
+  { en: "fill A out", ja: "Aに必要事項を書き込む" },
+  { en: "fill A up", ja: "Aをいっぱいに満たす" },
+  { en: "A (be) filled with B", ja: "AがBで満たされている" },
+  { en: "find A out", ja: "Aをつきとめる" },
+  { en: "find fault with A", ja: "Aに文句を言う" },
+  { en: "find one’s way (to A)", ja: "（Aに）たどりつく" },
+  { en: "find out (about A)", ja: "（Aについて）情報を得る" },
+  { en: "(at) first hand", ja: "直接に" },
+  { en: "first of all", ja: "まず第一に" },
+  { en: "focus on A", ja: "Aに集中する" },
+  { en: "(be) fond of A", ja: "Aを好む" },
+  { en: "for A’s part", ja: "Aの意見としては" },
+  { en: "for a rainy day", ja: "万一に備えて" },
+  { en: "for a while", ja: "しばらくの間" },
+  { en: "for ages", ja: "長い間" },
+  { en: "for all A", ja: "Aにもかかわらず" },
+  { en: "for ever", ja: "永遠に" },
+  { en: "for fear of A", ja: "Aを恐れて" },
+  { en: "for free", ja: "ただで" },
+  { en: "for good", ja: "永遠に" },
+  { en: "for lack of A", ja: "Aがないために" },
+  { en: "for life", ja: "生涯" },
+  { en: "for nothing", ja: "ただで" },
+  { en: "for one thing", ja: "ひとつには" },
+  { en: "for oneself", ja: "独力で" },
+  { en: "for pleasure", ja: "楽しみで" },
+  { en: "for sale", ja: "販売用の" },
+  { en: "for sure [certain]", ja: "確かに（は）" },
+  { en: "for the first time (in A)", ja: "初めて，Aぶりに" },
+  { en: "for the moment", ja: "さしあたり" },
+  { en: "for the most part", ja: "大体は" },
+  { en: "for the present", ja: "当分の間" },
+  { en: "for the purpose of A", ja: "Aが目的で" },
+  { en: "for the sake of A", ja: "Aのために" },
+  { en: "for the time being", ja: "当分の間" },
+  { en: "for want of A", ja: "Aがないために" },
+  { en: "(be) forced to V", ja: "Vせざるをえない" },
+  { en: "forget to V", ja: "Vし忘れる" },
+  { en: "forget Ving", ja: "Vしたことを忘れる" },
+  { en: "forgive A for B", ja: "BのことでAを許す" },
+  { en: "(be) free from A", ja: "Aがない" },
+  { en: "(be) free of charge", ja: "無料である" },
+  { en: "(be) free of [from] A", ja: "Aがない" },
+  { en: "(S) (be) free to (V)", ja: "自由にVできる" },
+  { en: "from now on", ja: "今後は（ずっと）" },
+  { en: "from time to time", ja: "時々" },
+  { en: "furnish A with B", ja: "AにBを備えつける" },
+  { en: "gaze at A", ja: "Aをみつめる" },
+  { en: "generally speaking", ja: "一般的に言えば" },
+  { en: "get A across (to B)", ja: "（Bに）Aを理解させる" },
+  { en: "get A down", ja: "Aの気分をめいらせる" },
+  { en: "get A into trouble", ja: "Aをめんどうなことに巻き込む" },
+  { en: "get A to V", ja: "AにVしてもらう" },
+  { en: "get along", ja: "暮らす" },
+  { en: "get along with A", ja: "Aと仲良くする，Aとうまくやっていく" },
+  { en: "get angry", ja: "怒る" },
+  { en: "get at A", ja: "Aを言おうとする" },
+  { en: "get away", ja: "逃げる" },
+  { en: "get away with A", ja: "Aのとがめを受けない" },
+  { en: "get down to A", ja: "Aに取りかかる" },
+  { en: "get excited", ja: "興奮する" },
+  { en: "get hold of A", ja: "①Aに連絡を取る ②Aを手に入れる" },
+  { en: "get in touch with A", ja: "Aと連絡を取る" },
+  { en: "get into trouble", ja: "めんどうなことになる，問題を起こす" },
+  { en: "get lost", ja: "道に迷う" },
+  { en: "get married (to A)", ja: "（Aと）結婚する" },
+  { en: "get nowhere", ja: "うまくいかない" },
+  { en: "get off (A)", ja: "（Aから）降りる" },
+  { en: "get on A’s nerves", ja: "Aをいらいらさせる" },
+  { en: "get on with A", ja: "Aを続ける" },
+  { en: "get over A", ja: "Aを克服する" },
+  { en: "get ready (for A)", ja: "（Aの）用意をする" },
+  { en: "get rid of A", ja: "Aを捨てる，Aを取り除く" },
+  { en: "get sick [ill]", ja: "病気になる" },
+  { en: "get the better of A", ja: "Aに打ち勝つ" },
+  { en: "get through (with) A", ja: "Aを終える" },
+  { en: "get to A", ja: "Aを始める" },
+  { en: "get to V", ja: "Vするようになる" },
+  { en: "get together (on A)", ja: "①集まる ②（Aについて）意見が一致する" },
+  { en: "get wet", ja: "濡れる" },
+  { en: "give A a call [ring]", ja: "Aに電話する" },
+  { en: "give A a hand (with B)", ja: "（Bのことで）Aに手を貸す" },
+  { en: "give A a lift", ja: "Aを車に乗せる" },
+  { en: "give A a ride", ja: "Aを乗せる" },
+  { en: "give A a try", ja: "Aを試す" },
+  { en: "give A away", ja: "Aをただでやる" },
+  { en: "give A credit for B", ja: "BをAの功績と認める" },
+  { en: "give A off", ja: "Aを放つ" },
+  { en: "give A out", ja: "Aを配る" },
+  { en: "give birth to A", ja: "Aを生む" },
+  { en: "give in (to A)", ja: "（Aに）屈する" },
+  { en: "give one’s best regards to A", ja: "Aによろしく伝える" },
+  { en: "give rise to A", ja: "Aを引き起こす" },
+  { en: "give thought to A", ja: "Aを考える" },
+  { en: "give (A) up", ja: "（Aを）やめる" },
+  { en: "give up on A", ja: "Aをあきらめる" },
+  { en: "give way (to A)", ja: "（Aに）屈する" },
+  { en: "glance at A", ja: "Aをちらっと見る" },
+  { en: "go a long way toward [to] Ving", ja: "Vするのに大いに役立つ" },
+  { en: "go about A", ja: "Aに取りかかる" },
+  { en: "go ahead", ja: "どうぞ" },
+  { en: "go along with A", ja: "Aに賛成する" },
+  { en: "go astray", ja: "迷う" },
+  { en: "go away", ja: "立ち去る" },
+  { en: "go bad", ja: "腐る" },
+  { en: "go bankrupt", ja: "倒産する" },
+  { en: "go blind", ja: "目が見えなくなる" },
+  { en: "go by", ja: "過ぎる" },
+  { en: "go [come] into effect", ja: "施行される" },
+  { en: "go dead", ja: "電話が切れる" },
+  { en: "go far", ja: "成功する" },
+  { en: "go fishing", ja: "釣りに行く" },
+  { en: "go for a drive", ja: "ドライブに出かける" },
+  { en: "go for a walk", ja: "散歩に出かける" },
+  { en: "go in for A", ja: "Aを始める" },
+  { en: "go into A", ja: "①Aになる ②Aをくわしく述べる" },
+  { en: "go mad", ja: "気が狂う" },
+  { en: "go off", ja: "爆発する" },
+  { en: "go on a diet", ja: "ダイエットをする" },
+  { en: "go on a picnic", ja: "ピクニックに行く" },
+  { en: "go on a trip", ja: "旅に出る" },
+  { en: "go on to V", ja: "次に続けてVする" },
+  { en: "go on Ving", ja: "Vし続ける" },
+  { en: "go on with A", ja: "Aを続ける" },
+  { en: "go out", ja: "消える" },
+  { en: "go out of business", ja: "閉店する" },
+  { en: "go out of one’s way to V", ja: "わざわざVする" },
+  { en: "go out with A", ja: "Aと付き合う" },
+  { en: "go over A", ja: "Aをくわしく調べる" },
+  { en: "go shopping", ja: "買い物に行く" },
+  { en: "go so far as to V", ja: "Vしさえする" },
+  { en: "go through A", ja: "Aを経験する" },
+  { en: "go through with A", ja: "Aを成し遂げる" },
+  { en: "go to extremes", ja: "極端なことをする" },
+  { en: "go to the trouble of Ving", ja: "Vしようと骨を折る" },
+  { en: "go together", ja: "調和している" },
+  { en: "go too far", ja: "やりすぎる" },
+  { en: "go with A", ja: "Aと調和している" },
+  { en: "go without A", ja: "Aなしですます" },
+  { en: "go wrong", ja: "失敗する" },
+  { en: "(be) good at A", ja: "Aが得意である" },
+  { en: "(be) grateful to A (for B)", ja: "Aに（Bのことで）感謝している" },
+  { en: "grow up", ja: "成人する" },
+  { en: "(be) guilty of A", ja: "Aについて有罪である" },
+  { en: "had better V", ja: "Vするほうがよい" },
+  { en: "hand A down", ja: "Aを子孫に伝える" },
+  { en: "hand A in", ja: "Aを提出する" },
+  { en: "hand A out", ja: "Aを配布する" },
+  { en: "hand in hand (with", ja: "A)（Aと）密接に関係して" },
+  { en: "hang on", ja: "続ける" },
+  { en: "hang up", ja: "電話を切る" },
+  { en: "happen to A", ja: "Aに起こる" },
+  { en: "hardly ～ when [before] …", ja: "～するやいなや…" },
+  { en: "have A in common (with", ja: "B)（Bと）Aを共有している" },
+  { en: "have A in mind", ja: "Aのことを考えている" },
+  { en: "have A on", ja: "Aを身に着けている" },
+  { en: "have A on one’s mind", ja: "Aのことが気にかかっている" },
+  { en: "have A to oneself", ja: "Aをひとりじめにする" },
+  { en: "have a bath", ja: "入浴する" },
+  { en: "have a chat", ja: "雑談する" },
+  { en: "have a discussion about A", ja: "Aについて議論する" },
+  { en: "have a dream", ja: "夢を見る" },
+  { en: "have a drink", ja: "酒を飲む" },
+  { en: "have a good command of A", ja: "Aを自由に使える" },
+  { en: "have a good [great] time", ja: "楽しく過ごす" },
+  { en: "have a hard time (in) Ving", ja: "Vするのに苦労する" },
+  { en: "have a headache", ja: "頭が痛い" },
+  { en: "have a high opinion of A", ja: "Aを高く評価する" },
+  { en: "have a look (at", ja: "A)（Aを）見る" },
+  { en: "have a low opinion of A", ja: "Aを低く評価する" },
+  { en: "have a sweet tooth", ja: "甘いものが好きだ" },
+  { en: "have a talk", ja: "話をする" },
+  { en: "have a [the] mind to V", ja: "Vしたい気がする" },
+  { en: "have a try", ja: "やってみる" },
+  { en: "have an accident", ja: "事故にあう" },
+  { en: "have an adventure", ja: "冒険する" },
+  { en: "have an eye for A", ja: "Aを見る目がある" },
+  { en: "have bearing on A", ja: "Aと関係がある" },
+  { en: "have confidence in A", ja: "Aに自信がある" },
+  { en: "have difficulty (in) Ving", ja: "Vするのに苦労する" },
+  { en: "have (an) effect on A", ja: "Aに影響を与える" },
+  { en: "have faith in A", ja: "Aを信頼する" },
+  { en: "have (a) good [every] reason to V", ja: "Vするのももっともだ" },
+  { en: "have got to V", ja: "Vしなければならない" },
+  { en: "have (an) impact on A", ja: "Aに強い影響を与える" },
+  { en: "have (an) influence on A", ja: "Aに影響を与える" },
+  { en: "have little to do with A", ja: "Aと少ししか関係がない" },
+  { en: "have no choice but to V", ja: "Vする以外に道がない" },
+  { en: "have no doubt + that ～", ja: "～を疑わない" },
+  { en: "have no idea + wh ～", ja: "～がわからない" },
+  { en: "have no intention of Ving", ja: "Vするつもりはない" },
+  { en: "have no objection to A", ja: "Aに反対しない" },
+  { en: "have no sense of A", ja: "Aの感覚がない" },
+  { en: "have nothing to do with A", ja: "Aと関係がない" },
+  { en: "have one’s own way", ja: "思い通りにする" },
+  { en: "have one’s share of A", ja: "Aの分け前をもらう" },
+  { en: "have only to V1 (to V2)", ja: "V2するにはV1しさえすればよい" },
+  { en: "have pity on A", ja: "Aに同情する" },
+  { en: "have respect for A", ja: "Aを尊重する" },
+  { en: "have (a) responsibility for A", ja: "Aの責任がある" },
+  { en: "have (a) sleep", ja: "眠る" },
+  { en: "have something to do with A", ja: "Aと関係がある" },
+  { en: "have the kindness to V", ja: "親切にもVする" },
+  { en: "have trouble (in) Ving", ja: "Vするのに苦労する" },
+  { en: "have trouble with A", ja: "Aの調子が悪い" },
+  { en: "have trust in A", ja: "Aを信頼する" },
+  { en: "have yet to V", ja: "まだVしない" },
+  { en: "head for A", ja: "Aに向かって進む" },
+  { en: "hear from A", ja: "Aから便りをもらう" },
+  { en: "hear of A", ja: "Aのことを耳にする" },
+  { en: "help A with B", ja: "AがBをするのを助ける" },
+  { en: "help oneself to A", ja: "Aを自分で取って食べる" },
+  { en: "hit A on the B", ja: "AのBをなぐる" },
+  { en: "hit on [upon] A", ja: "Aを思いつく" },
+  { en: "hold A back", ja: "Aを抑える" },
+  { en: "hold good", ja: "有効である" },
+  { en: "hold on", ja: "電話を切らずに待つ" },
+  { en: "hold one’s breath", ja: "息を凝らす" },
+  { en: "hold one’s tongue", ja: "黙る" },
+  { en: "hold the line", ja: "電話を切らずに待つ" },
+  { en: "hold (on) to A", ja: "Aに固執する" },
+  { en: "hold true", ja: "当てはまる" },
+  { en: "hold (A) up", ja: "（他）Aを遅らせる（自）真実である" },
+  { en: "(be) hooked on A", ja: "Aに夢中だ" },
+  { en: "hope for A", ja: "Aを望む" },
+  { en: "How about A [Ving]?", ja: "Aはどうですか" },
+  { en: "How come ～?", ja: "なぜ～か" },
+  { en: "hurry up", ja: "急ぐ" },
+  { en: "identify A as B", ja: "AをBと同一視する" },
+  { en: "identify with A", ja: "Aに共感する" },
+  { en: "if any", ja: "あるとしても" },
+  { en: "if anything", ja: "どちらかと言えば" },
+  { en: "(be) ignorant of A", ja: "Aを知らない" },
+  { en: "I’m afraid ～", ja: "残念ながら～" },
+  { en: "I’m just looking.", ja: "見ているだけです" },
+  { en: "impose A on B", ja: "AをBに課す" },
+  { en: "(O) (be) impossible to (V)", ja: "OをVするのは不可能だ" },
+  { en: "in A’s opinion [view]", ja: "Aの意見では" },
+  { en: "(be) in a hurry", ja: "急いでいる" },
+  { en: "in a row", ja: "連続して" },
+  { en: "in a sense", ja: "ある意味では" },
+  { en: "in a way", ja: "ある意味では" },
+  { en: "in a word", ja: "一言で言うと" },
+  { en: "in accordance with A", ja: "Aに従って" },
+  { en: "in addition (to A)", ja: "（Aに）加えて" },
+  { en: "in advance", ja: "前もって" },
+  { en: "in all", ja: "全部で" },
+  { en: "in anger", ja: "腹を立てて" },
+  { en: "in any case", ja: "とにかく" },
+  { en: "in brief", ja: "手短かに言えば" },
+  { en: "(just) in case", ja: "万一の場合に備えて" },
+  { en: "in case ～", ja: "①もし～ならば ②～の場合に備えて" },
+  { en: "(be) in charge (of A)", ja: "（Aを）担当している" },
+  { en: "in comparison with A", ja: "Aと比べて" },
+  { en: "in conclusion", ja: "結論としては" },
+  { en: "in connection with A", ja: "Aに関連して" },
+  { en: "in contrast (to A)", ja: "（Aと）対照的に" },
+  { en: "(be) in control (of A)", ja: "（Aを）支配している" },
+  { en: "(be) in danger (of Ving)", ja: "（Vする）危険にさらされている" },
+  { en: "(be) in debt", ja: "借金をしている" },
+  { en: "(be) in demand", ja: "需要がある" },
+  { en: "in despair", ja: "絶望して" },
+  { en: "in detail", ja: "くわしく" },
+  { en: "(be) in difficulty", ja: "困っている" },
+  { en: "in effect", ja: "事実上は" },
+  { en: "in exchange for A", ja: "Aと交換に" },
+  { en: "in fact", ja: "①実際 ②いやそれどころか" },
+  { en: "(be) in fashion", ja: "流行している" },
+  { en: "(be) in favor of A", ja: "Aに賛成だ" },
+  { en: "in general", ja: "一般的に言って" },
+  { en: "(be) in good health", ja: "健康である" },
+  { en: "in haste", ja: "急いで" },
+  { en: "in honor of A", ja: "Aに敬意を表して" },
+  { en: "in itself [themselves]", ja: "それ自体としては" },
+  { en: "in (the) light of A", ja: "Aを考慮して" },
+  { en: "(be) in love with A", ja: "Aに恋している" },
+  { en: "(be) in need", ja: "困っている" },
+  { en: "(be) in need of A", ja: "Aを必要としている" },
+  { en: "in no time", ja: "すぐに" },
+  { en: "(be) in order", ja: "整然としている" },
+  { en: "in other words", ja: "言い換えると" },
+  { en: "(be) in pain", ja: "苦しんでいる" },
+  { en: "in particular", ja: "特に" },
+  { en: "in person", ja: "自ら" },
+  { en: "in place of A", ja: "Aのかわりに" },
+  { en: "in practice", ja: "実際上は" },
+  { en: "in preparation for A", ja: "Aに備えて" },
+  { en: "in principle", ja: "原則的には" },
+  { en: "in private", ja: "私的に" },
+  { en: "in proportion to A", ja: "Aに比例して" },
+  { en: "in public", ja: "公然と" },
+  { en: "in pursuit of A", ja: "Aを追及して" },
+  { en: "in reality", ja: "事実上は" },
+  { en: "in regard to A", ja: "Aに関して" },
+  { en: "in relation to A", ja: "Aに関連して" },
+  { en: "in respect to [of] A", ja: "Aに関して" },
+  { en: "in return (for A)", ja: "（Aの）お返しに" },
+  { en: "in search of A", ja: "Aを探し求めて" },
+  { en: "in secret", ja: "ひそかに" },
+  { en: "(be) in (good) shape", ja: "いい状態である" },
+  { en: "in short", ja: "要するに" },
+  { en: "(be) in short supply", ja: "供給不足である" },
+  { en: "(be) in sight", ja: "見える" },
+  { en: "in spite of A", ja: "Aにもかかわらず" },
+  { en: "in store for A", ja: "Aを待ち構えて" },
+  { en: "in succession", ja: "連続して" },
+  { en: "in surprise", ja: "驚いて" },
+  { en: "in terms of A", ja: "Aの視点から" },
+  { en: "in that ～", ja: "～という点で" },
+  { en: "in the absence of A", ja: "Aがないところで" },
+  { en: "in the company of A", ja: "Aといっしょにいて" },
+  { en: "in the course of A", ja: "Aの間に" },
+  { en: "in the face of A", ja: "Aに直面して" },
+  { en: "in the first place", ja: "そもそも" },
+  { en: "in the future", ja: "将来" },
+  { en: "(be) in the habit of Ving", ja: "Vする習慣である" },
+  { en: "in the long run", ja: "長い目で見れば" },
+  { en: "in the meantime", ja: "その間に" },
+  { en: "(be) in the mood for Ving [to V]", ja: "Vしたい気分である" },
+  { en: "in the [one’s] way", ja: "じゃまになって" },
+  { en: "in the past", ja: "過去に" },
+  { en: "in the presence of A", ja: "Aの面前で" },
+  { en: "in theory", ja: "理論上は" },
+  { en: "in time (for A)", ja: "（Aに）間に合って" },
+  { en: "(be) in trouble", ja: "困っている" },
+  { en: "in turn", ja: "次に" },
+  { en: "(be) in use", ja: "使用されている" },
+  { en: "(be) in vain", ja: "むだになる" },
+  { en: "in view of A", ja: "Aを考慮して" },
+  { en: "in Ving", ja: "Vしているときに" },
+  { en: "(be) inclined to V", ja: "Vしがちだ" },
+  { en: "(be) independent of A", ja: "Aから独立している" },
+  { en: "(be) indifferent to A", ja: "Aに無関心である" },
+  { en: "(be) indispensable to A", ja: "Aにとって不可欠である" },
+  { en: "indulge in A", ja: "Aにふける" },
+  { en: "(be) inferior to A", ja: "Aより劣っている" },
+  { en: "inform A of B", ja: "AにBを知らせる" },
+  { en: "inform A that ～", ja: "Aに～を知らせる" },
+  { en: "insist on A", ja: "Aを強く主張する" },
+  { en: "insist that ～", ja: "～だと主張する" },
+  { en: "(be) intent on A", ja: "Aに熱心である" },
+  { en: "interfere with A", ja: "Aを妨害する" },
+  { en: "(be) involved in A", ja: "Aに関係している" },
+  { en: "A is to B what [as] C is to D", ja: "AとBの関係はCとDの関係に等しい" },
+  { en: "It goes without saying that ～", ja: "～は言うまでもない" },
+  { en: "It is no exaggeration to say that ～", ja: "～と言っても過言ではない" },
+  { en: "it is no use Ving", ja: "Vするのはむだだ" },
+  { en: "It is not too much to say that ～", ja: "～と言っても過言ではない" },
+  { en: "it is (high) time that ～", ja: "～する時間だ" },
+  { en: "it’s none of A’s business", ja: "Aが口出しすべきでない" },
+  { en: "(be) jealous of A", ja: "Aをねたんでいる" },
+  { en: "join in A", ja: "Aに参加する" },
+  { en: "judging from A", ja: "Aから判断すると" },
+  { en: "(be) junior to A", ja: "Aより年下である" },
+  { en: "just around the corner", ja: "もうすぐ" },
+  { en: "(be) keen on A", ja: "Aが好きだ" },
+  { en: "keep A back", ja: "Aを抑える" },
+  { en: "keep A (away) from B", ja: "AをBに近づけない" },
+  { en: "keep A from Ving", ja: "AにVさせないでおく" },
+  { en: "keep A secret", ja: "Aを秘密にしておく" },
+  { en: "keep A to oneself", ja: "Aを秘密にしておく" },
+  { en: "keep A up", ja: "Aを続ける，維持する" },
+  { en: "keep a diary", ja: "日記をつける" },
+  { en: "keep a secret", ja: "秘密を守る" },
+  { en: "keep an [one’s] eye on A", ja: "Aから目を離さない" },
+  { en: "keep away from A", ja: "Aに近づかない" },
+  { en: "keep [bear] A in mind", ja: "Aを覚えている" },
+  { en: "keep company with A", ja: "Aと同行する" },
+  { en: "keep early hours", ja: "早寝する" },
+  { en: "keep from Ving", ja: "Vしないでおく" },
+  { en: "keep in contact with A", ja: "Aと接触を保つ" },
+  { en: "keep in touch with A", ja: "Aと連絡を保つ" },
+  { en: "keep (A) off", ja: "（Aに）近づかない" },
+  { en: "keep off A", ja: "Aに立ち入らない" },
+  { en: "keep on Ving", ja: "Vし続ける" },
+  { en: "keep one’s eyes open", ja: "目を開けておく" },
+  { en: "keep one’s promise (to A)", ja: "（Aとの）約束を守る" },
+  { en: "keep one’s temper", ja: "怒りを抑える" },
+  { en: "keep one’s word", ja: "約束を守る" },
+  { en: "keep (A) out", ja: "（他）Aを中に入れない （自）中に入らない" },
+  { en: "keep out of A", ja: "Aにかかわらない" },
+  { en: "keep pace with A", ja: "Aに遅れずについていく" },
+  { en: "keep (one’s) silence", ja: "黙っている" },
+  { en: "keep silent", ja: "黙っている" },
+  { en: "keep to A", ja: "Aを守る" },
+  { en: "keep to oneself", ja: "他人から離れる" },
+  { en: "keep track of A", ja: "Aを見失わない" },
+  { en: "keep up with A", ja: "Aに遅れずついていく" },
+  { en: "keep Ving", ja: "Vし続ける" },
+  { en: "(be) kind to A", ja: "Aに親切である" },
+  { en: "know A by heart", ja: "Aを暗記している" },
+  { en: "know A from B", ja: "AとBを区別できる" },
+  { en: "know nothing of A", ja: "Aについてまったく知らない" },
+  { en: "know something of A", ja: "Aについていくぶん知っている" },
+  { en: "(be) known for A", ja: "Aで有名である" },
+  { en: "(be) known to A", ja: "Aに知られている" },
+  { en: "(be) lacking in A", ja: "Aが欠けている" },
+  { en: "later on", ja: "あとになって" },
+  { en: "lay A off", ja: "Aを（一時）解雇する" },
+  { en: "lay A out", ja: "Aを並べる" },
+  { en: "lead to A", ja: "①Aをひきおこす ②Aに通じる" },
+  { en: "learn A by heart", ja: "Aを暗記する" },
+  { en: "leave A off", ja: "Aをやめる" },
+  { en: "leave A out", ja: "Aを抜かす" },
+  { en: "leave [let] A alone", ja: "Aをそのままにしておく" },
+  { en: "let A be", ja: "Aをそのままにしておく" },
+  { en: "let A down", ja: "Aを失望させる" },
+  { en: "let alone A", ja: "ましてやAはない" },
+  { en: "let go of A", ja: "Aを離す" },
+  { en: "Let me see.", ja: "ええっと" },
+  { en: "(be) liable to V", ja: "Vしがちだ" },
+  { en: "lie in A", ja: "Aに存在する" },
+  { en: "(be) likely to V", ja: "Vしそうだ" },
+  { en: "limit A to B", ja: "AをBに限定する" },
+  { en: "listen for A", ja: "Aが聞こえないかと耳をすます" },
+  { en: "little by little", ja: "少しずつ" },
+  { en: "live from hand to mouth", ja: "その日暮らしをする" },
+  { en: "live on A", ja: "Aに頼って生きる" },
+  { en: "live up to A", ja: "Aに添う" },
+  { en: "load A with B", ja: "AにBを積む" },
+  { en: "long for A", ja: "Aを熱望する" },
+  { en: "look A in the eye", ja: "Aの目をまともに見る" },
+  { en: "look A over", ja: "Aに目を通す" },
+  { en: "look A up (in B)", ja: "（Bで）Aを調べる" },
+  { en: "look after A", ja: "Aのめんどうをみる" },
+  { en: "look alike", ja: "そっくりに見える" },
+  { en: "look as if [though] ～", ja: "まるで〜かのようだ" },
+  { en: "look back (on [over] A)", ja: "（Aを）回想する" },
+  { en: "look down on A", ja: "Aを軽蔑する 見下す" },
+  { en: "look for A", ja: "Aを探す" },
+  { en: "look forward to A [Ving]", ja: "A（Vするの）を楽しみに待つ" },
+  { en: "look into A", ja: "Aを調べる" },
+  { en: "A look like B", ja: "AはBのように見える" },
+  { en: "look on", ja: "傍観する" },
+  { en: "look out (for A)", ja: "（Aに）気をつける" },
+  { en: "look through A", ja: "Aに目を通す" },
+  { en: "look to A (for B)", ja: "（Bを求めて）Aに頼る" },
+  { en: "look up to A", ja: "Aを尊敬する" },
+  { en: "look upon [on] A as B", ja: "AをBとみなす" },
+  { en: "lose one’s temper", ja: "腹を立てる" },
+  { en: "lose one’s way", ja: "道に迷う" },
+  { en: "lose sight of A", ja: "Aを見失う" },
+  { en: "(be) made of A", ja: "Aでできている" },
+  { en: "(be) made up of A", ja: "Aで構成されている" },
+  { en: "major in A", ja: "Aを専攻する" },
+  { en: "make A from B", ja: "AをBから作る" },
+  { en: "make A into B", ja: "AをBにする" },
+  { en: "make A (out) of B", ja: "AをBで作る" },
+  { en: "make A out", ja: "Aを判別する" },
+  { en: "make A up", ja: "①Aを占める ②Aをでっち上げる" },
+  { en: "make a choice", ja: "選ぶ" },
+  { en: "make a difference", ja: "重要である" },
+  { en: "make a fool of A", ja: "Aを笑いものにする" },
+  { en: "make a fool of oneself", ja: "ばかなことをする" },
+  { en: "make a fuss about [over] A", ja: "Aで騒ぎ立てる" },
+  { en: "make a living", ja: "生計を立てる" },
+  { en: "make a mistake", ja: "誤りを犯す" },
+  { en: "make a point of Ving", ja: "必ずVする" },
+  { en: "make a reservation (for A)", ja: "（Aの）予約をする" },
+  { en: "make allowance(s) for A", ja: "Aを考慮する" },
+  { en: "make an attempt", ja: "試みる" },
+  { en: "make an effort (to V)", ja: "（Vしようと）努力する" },
+  { en: "make an error", ja: "誤りを犯す" },
+  { en: "make an impression on A", ja: "Aに感動を与える Aに印象を与える" },
+  { en: "make believe (that) ～", ja: "～のふりをする" },
+  { en: "make certain that ～", ja: "～を確かめる" },
+  { en: "make do with A", ja: "Aで間に合わせる" },
+  { en: "make (both) ends meet", ja: "収入内でやりくりする" },
+  { en: "make for A", ja: "①Aに役立つ ②Aに向かって進む" },
+  { en: "make friends with A", ja: "Aと友だちになる" },
+  { en: "make fun of A", ja: "Aを笑いものにする" },
+  { en: "make good", ja: "成功する" },
+  { en: "make haste", ja: "急ぐ" },
+  { en: "make it", ja: "①たどり着く ②成しとげる" },
+  { en: "make it a rule to V", ja: "Vすることにしている" },
+  { en: "make much of A", ja: "Aを重んじる" },
+  { en: "make one’s way", ja: "進む" },
+  { en: "make oneself at home", ja: "くつろぐ" },
+  { en: "make oneself heard", ja: "自分の言うことを聞いてもらう" },
+  { en: "make oneself understood", ja: "自分の言いたいことをわからせる" },
+  { en: "make progress", ja: "進歩する" },
+  { en: "make room for A", ja: "Aのために場所をあける" },
+  { en: "make sense (to A)", ja: "（Aに）理解できる" },
+  { en: "make sense of A", ja: "Aを理解する" },
+  { en: "make sure (that) ～", ja: "～になるよう注意する" },
+  { en: "make sure [certain] of A", ja: "Aを確かめる" },
+  { en: "make tea", ja: "お茶をいれる" },
+  { en: "make the best of A", ja: "Aを最大限利用する" },
+  { en: "make the most of A", ja: "Aを最大限利用する" },
+  { en: "make up", ja: "仲直りする" },
+  { en: "make up for A", ja: "Aを埋め合わせる" },
+  { en: "make up one’s mind (to V)", ja: "（Vする）決心をする" },
+  { en: "make use of A", ja: "Aを利用する" },
+  { en: "many a A", ja: "多数のA" },
+  { en: "marvel at A", ja: "Aに驚く" },
+  { en: "may [might] as well V (as not) V", ja: "（しないより）Vするほうがよい" },
+  { en: "may [might] well V", ja: "Vするのももっともだ" },
+  { en: "might as well V1 (as V2)", ja: "（V2するのは）V1するようなものだ" },
+  { en: "Mind your own business.", ja: "大きなお世話だ" },
+  { en: "mistake A for B", ja: "AをBと取り違える" },
+  { en: "more often than not", ja: "たいてい" },
+  { en: "more or less", ja: "だいたい" },
+  { en: "most of all", ja: "とりわけ" },
+  { en: "mother tongue", ja: "母語" },
+  { en: "name A B after C", ja: "CにちなんでAをBと名づける" },
+  { en: "(be) native to A", ja: "A生まれである" },
+  { en: "needless to say", ja: "言うまでもなく" },
+  { en: "never [cannot] V1 without V2ing", ja: "V1するとかならずV2する" },
+  { en: "next time (～)", ja: "①次回に ②次に～するときに" },
+  { en: "next to A", ja: "ほとんどA" },
+  { en: "(there is) no doubt (that) ～", ja: "確かに～" },
+  { en: "no less … than A", ja: "Aに劣らず…だ" },
+  { en: "no less than A", ja: "Aほども多く" },
+  { en: "no longer", ja: "もはや～ない" },
+  { en: "no more … than A", ja: "A同様…ではない" },
+  { en: "no more than A", ja: "わずかA" },
+  { en: "no sooner ～ than …", ja: "～するとすぐに…" },
+  { en: "(it is) no wonder (that) ～", ja: "～ということに不思議はない" },
+  { en: "not ～ in the least", ja: "まったく～ない" },
+  { en: "not so much A as B", ja: "AというよりむしろB" },
+  { en: "not to mention A", ja: "Aは言うまでもなく" },
+  { en: "not to speak of A", ja: "Aは言うまでもなく" },
+  { en: "nothing but A", ja: "Aだけ" },
+  { en: "nothing less than A", ja: "まさしくA" },
+  { en: "nothing short of A", ja: "まさしくA" },
+  { en: "(be) notorious for A", ja: "Aで悪名高い" },
+  { en: "(every) now and then [again]", ja: "時々" },
+  { en: "object to A", ja: "Aに反対する" },
+  { en: "(be) obliged to V", ja: "Vせざるをえない" },
+  { en: "occur to A", ja: "ふとAの頭に浮かぶ" },
+  { en: "of A’s own Ving", ja: "Aが自分でVした" },
+  { en: "(be) of importance", ja: "重要である" },
+  { en: "(be) of interest", ja: "おもしろい" },
+  { en: "of one’s own accord", ja: "自分の意志で" },
+  { en: "(be) of use", ja: "役に立つ" },
+  { en: "(be) on a diet", ja: "ダイエットをしている" },
+  { en: "(be) on a trip", ja: "旅に出ている" },
+  { en: "on account of A", ja: "Aにより" },
+  { en: "on and off", ja: "断続的に" },
+  { en: "on and on", ja: "どんどん続けて" },
+  { en: "on (the) average", ja: "平均して" },
+  { en: "on behalf of A", ja: "Aを代表して" },
+  { en: "(be) on board", ja: "乗っている" },
+  { en: "(be) on business", ja: "仕事で出かけている" },
+  { en: "on (the) condition that ～", ja: "～という条件で" },
+  { en: "(be) on duty", ja: "勤務中である" },
+  { en: "on earth", ja: "一体全体" },
+  { en: "on end", ja: "連続して" },
+  { en: "(be) on fire", ja: "火がついている" },
+  { en: "on foot", ja: "徒歩で" },
+  { en: "(be) on good terms with A", ja: "Aとよい関係にある" },
+  { en: "(be) on leave", ja: "休暇中である" },
+  { en: "on occasion(s)", ja: "時々" },
+  { en: "(be [lie]) on one’s back", ja: "あおむけに（なって［寝て］）" },
+  { en: "(be) on one’s feet", ja: "立っている" },
+  { en: "(be) on one’s guard", ja: "用心している" },
+  { en: "on one’s own", ja: "ひとりで" },
+  { en: "(be [lie]) on one’s stomach", ja: "腹ばいに" },
+  { en: "on purpose", ja: "わざと" },
+  { en: "(be) on sale", ja: "売られている" },
+  { en: "on schedule", ja: "予定通りに" },
+  { en: "on second thought", ja: "考え直してみると" },
+  { en: "(be) on strike", ja: "ストライキ中である" },
+  { en: "(be) on the air", ja: "放送されている" },
+  { en: "on the contrary", ja: "それどころか" },
+  { en: "(be) on the decline", ja: "衰退しつつある" },
+  { en: "on the face of it", ja: "ちょっと見たところでは" },
+  { en: "on the grounds of A", ja: "Aを理由に" },
+  { en: "(be) on the increase", ja: "増加しつつある" },
+  { en: "(be) on the move", ja: "移動中である" },
+  { en: "on the one hand", ja: "一方では" },
+  { en: "on the [one’s] way (to A)", ja: "（Aに行く）途中で" },
+  { en: "on the other hand", ja: "他方では" },
+  { en: "on the part of A", ja: "A側の" },
+  { en: "(be) on the rise", ja: "上昇中である" },
+  { en: "on the spot", ja: "その場で" },
+  { en: "(be) on the verge of A [Ving]", ja: "今にもA［V］しそうだ" },
+  { en: "on the whole", ja: "概して" },
+  { en: "on time", ja: "時間通りに" },
+  { en: "(be) on vacation", ja: "休暇中で出かけている" },
+  { en: "on Ving", ja: "Vした直後に" },
+  { en: "once (and) for all", ja: "きっぱりと" },
+  { en: "once in a while", ja: "時々" },
+  { en: "once upon a time", ja: "むかし" },
+  { en: "one (A) after another", ja: "次々と" },
+  { en: "one another", ja: "お互い" },
+  { en: "one by one", ja: "ひとつずつ" },
+  { en: "one day", ja: "いつか" },
+  { en: "one of these days", ja: "近いうちに" },
+  { en: "A be one thing. B be another.", ja: "AとBは別のものだ" },
+  { en: "only too A", ja: "非常にA" },
+  { en: "(be) open to A", ja: "Aを受け入れる" },
+  { en: "operate on A", ja: "Aを手術する" },
+  { en: "(be) opposed to A", ja: "Aに反対している" },
+  { en: "(be) out of breath", ja: "息が切れている" },
+  { en: "(be) out of control", ja: "制御不能である" },
+  { en: "(be) out of date", ja: "時代遅れである" },
+  { en: "(be) out of fashion", ja: "流行遅れである" },
+  { en: "(be) out of one’s mind", ja: "気が狂っている" },
+  { en: "(be) out of order", ja: "壊れている" },
+  { en: "(be) out of place", ja: "場違いである" },
+  { en: "(be) out of sight", ja: "見えなくなっている" },
+  { en: "(be) out of the question", ja: "不可能である" },
+  { en: "(be) out of work", ja: "失業している" },
+  { en: "owe A to B", ja: "AはBのおかげだ" },
+  { en: "owing to A", ja: "Aのために" },
+  { en: "(a) part of A", ja: "Aの一部" },
+  { en: "part with A", ja: "Aを手放す" },
+  { en: "participate in A", ja: "Aに参加する" },
+  { en: "(be) particular about A", ja: "Aについて好みがうるさい" },
+  { en: "pass A on to B", ja: "AをBに伝える" },
+  { en: "pass away", ja: "息を引きとる" },
+  { en: "pass by", ja: "通り過ぎる" },
+  { en: "pass for A", ja: "Aとして通る" },
+  { en: "pat A on the B", ja: "AのBを軽くたたく" },
+  { en: "pay attention to A", ja: "Aに注意を払う" },
+  { en: "pay (A) for B", ja: "Bに（Aを）支払う" },
+  { en: "(be) peculiar to A", ja: "Aに特有である" },
+  { en: "pick A out", ja: "Aを選び出す" },
+  { en: "pick A up", ja: "①Aを車に乗せる ②Aを聞き覚える" },
+  { en: "play a part in A", ja: "Aにおいて役割を演じる" },
+  { en: "play a role in A", ja: "Aにおいて役割を演じる" },
+  { en: "play a trick on A", ja: "Aをからかう" },
+  { en: "(be) pleased with A", ja: "Aに満足している" },
+  { en: "plenty of A", ja: "たくさんのA" },
+  { en: "point A out", ja: "Aを指摘する" },
+  { en: "point at A", ja: "Aを指す" },
+  { en: "(be) poor at A", ja: "Aが苦手である" },
+  { en: "praise A for B", ja: "BのことでAをほめる" },
+  { en: "prefer A to B", ja: "BよりAを好む" },
+  { en: "prefer to V1 rather than V2", ja: "V2するよりV1したい" },
+  { en: "(be) preferable to A", ja: "Aより望ましい" },
+  { en: "prepare for A", ja: "Aの準備をする" },
+  { en: "present A with B", ja: "AにBを与える" },
+  { en: "present oneself", ja: "出席する" },
+  { en: "prevent A from Ving", ja: "AがVするのを妨げる" },
+  { en: "pride oneself on A", ja: "Aを自慢する" },
+  { en: "prior to A", ja: "Aより前に" },
+  { en: "prohibit A from Ving", ja: "AがVするのを禁止する" },
+  { en: "(be) proud of A", ja: "Aを自慢に思う" },
+  { en: "provide A with B", ja: "AにBを与える" },
+  { en: "provide for A", ja: "Aを養う" },
+  { en: "pull A’s leg", ja: "Aをだます" },
+  { en: "pull up", ja: "止まる" },
+  { en: "punish A for B", ja: "BのことでAを罰する" },
+  { en: "push one’s way", ja: "押し進む" },
+  { en: "put A aside", ja: "Aを蓄える" },
+  { en: "put A away", ja: "Aをかたづける" },
+  { en: "put A down", ja: "Aを書き留める" },
+  { en: "put A into B", ja: "AをBに訳す" },
+  { en: "put A into action", ja: "Aを実行する" },
+  { en: "put A into effect", ja: "Aを実施する" },
+  { en: "put A into practice", ja: "Aを実行に移す" },
+  { en: "put A into words", ja: "Aを言葉で表す" },
+  { en: "put A off", ja: "Aを延期する" },
+  { en: "put A on", ja: "Aを身に着ける" },
+  { en: "put A out", ja: "Aを消す" },
+  { en: "put A to bed", ja: "Aを寝かす" },
+  { en: "put A to death", ja: "Aを死刑にする" },
+  { en: "put A to [into] use", ja: "Aを用いる" },
+  { en: "put A to shame", ja: "Aを恥じ入らせる" },
+  { en: "put A to work", ja: "Aを働かせる" },
+  { en: "put A together", ja: "Aを組み立てる" },
+  { en: "put a question to A", ja: "Aに質問する" },
+  { en: "put a stop to A", ja: "Aを止める" },
+  { en: "put an end to A", ja: "Aを終える" },
+  { en: "put [bring] A into practice", ja: "Aを実行に移す" },
+  { en: "put (an) emphasis on A", ja: "Aを強調する" },
+  { en: "put it another way", ja: "別の言い方をする" },
+  { en: "put it simply", ja: "手短に言う" },
+  { en: "put on airs", ja: "気どる" },
+  { en: "put on weight", ja: "体重が増える" },
+  { en: "put oneself in A’s shoes", ja: "Aの立場になってみる" },
+  { en: "put [set] A in order", ja: "Aを整頓する" },
+  { en: "put up with A", ja: "Aに耐える" },
+  { en: "quite a few A", ja: "かなり多くのA" },
+  { en: "quite a little A", ja: "かなりたくさんのA" },
+  { en: "rarely, if ever", ja: "（あるとしても）めったに～ない" },
+  { en: "reach for A", ja: "Aを取ろうと手をのばす" },
+  { en: "read between the lines", ja: "行間の意味を読み取る" },
+  { en: "(be) ready for A", ja: "Aの準備ができている" },
+  { en: "(be) ready to V", ja: "喜んでVする" },
+  { en: "recover from A", ja: "Aから回復する" },
+  { en: "refer to A", ja: "Aを指す" },
+  { en: "refer to A as B", ja: "AをBと呼ぶ" },
+  { en: "reflect on A", ja: "Aをよく考える" },
+  { en: "refrain from Ving", ja: "Vするのを慎む" },
+  { en: "regard A as B", ja: "AをBとみなす" },
+  { en: "regret to V", ja: "残念ながらVする" },
+  { en: "regret Ving", ja: "Vしたことを後悔する" },
+  { en: "relieve A of B", ja: "AからBを取り去る" },
+  { en: "(be) reluctant to V", ja: "Vしたがらない" },
+  { en: "rely on A", ja: "Aに頼る" },
+  { en: "remember A to B", ja: "AのことをBによろしく言う" },
+  { en: "remember to V", ja: "忘れずにVする" },
+  { en: "remember Ving", ja: "Vしたことを覚えている" },
+  { en: "remind A of B", ja: "AにBを思い出させる" },
+  { en: "resort to A", ja: "Aに訴える" },
+  { en: "(be) responsible for A", ja: "Aに対して責任がある" },
+  { en: "rest on A", ja: "Aに基づく" },
+  { en: "A result from B", ja: "AがBから起こる" },
+  { en: "result in A", ja: "結果としてAになる" },
+  { en: "(be) rich in A", ja: "Aが豊かだ" },
+  { en: "right away", ja: "すぐ" },
+  { en: "rise to one’s feet", ja: "立ち上がる" },
+  { en: "rob A of B", ja: "AからBを強奪する" },
+  { en: "rule A out", ja: "Aを否定する" },
+  { en: "run across A", ja: "Aに偶然出会う" },
+  { en: "run into A", ja: "Aにぶつかる" },
+  { en: "run out", ja: "なくなる" },
+  { en: "run out of A", ja: "Aを切らす" },
+  { en: "run over A", ja: "Aをひく" },
+  { en: "A run short", ja: "Aが不足する" },
+  { en: "run short of A", ja: "Aを切らす" },
+  { en: "run the risk of Ving", ja: "Vする危険をおかす" },
+  { en: "(be) satisfied with A", ja: "Aに満足している" },
+  { en: "scarcely ～ before [when] ～", ja: "しないうちに" },
+  { en: "scores of A", ja: "多数のA" },
+  { en: "search for A", ja: "Aを探し求める" },
+  { en: "seat oneself", ja: "座る" },
+  { en: "(at) second hand", ja: "間接に" },
+  { en: "(be) second to none (in A)", ja: "（Aにおいて）誰にも劣らない" },
+  { en: "see A as B", ja: "AをBとみなす" },
+  { en: "see A off", ja: "Aを見送る" },
+  { en: "see eye to eye with A", ja: "Aと意見が一致する" },
+  { en: "see much of A", ja: "Aにしばしば会う" },
+  { en: "see something of A", ja: "Aに時々会う" },
+  { en: "see to A", ja: "Aを取りはからう" },
+  { en: "see to it that ～", ja: "～するよう気をつける" },
+  { en: "See you (later).", ja: "じゃあまた" },
+  { en: "seeing that ～", ja: "～を考えると" },
+  { en: "sell A for B", ja: "AをBで売る" },
+  { en: "send for A", ja: "Aを呼びにやる" },
+  { en: "(be) senior to A", ja: "Aより年上である" },
+  { en: "(be) sensitive to A", ja: "Aに敏感である" },
+  { en: "set A aside", ja: "Aを取っておく" },
+  { en: "set A down", ja: "Aを取り決める" },
+  { en: "set A free", ja: "Aを解放する" },
+  { en: "set A on fire", ja: "Aに火をつける" },
+  { en: "set A up", ja: "Aを設立する" },
+  { en: "set about A [Ving]", ja: "①Aにとりかかる ②Vし始める" },
+  { en: "set in", ja: "始まる" },
+  { en: "set off", ja: "出発する" },
+  { en: "set out (to V)", ja: "他Vし始める 自出発する" },
+  { en: "set sail", ja: "出帆する" },
+  { en: "settle down", ja: "定住する" },
+  { en: "shake hands with A", ja: "Aと握手する" },
+  { en: "(be) short of A", ja: "Aが不足している" },
+  { en: "show A off", ja: "Aを見せびらかす" },
+  { en: "show up", ja: "現れる" },
+  { en: "shut up", ja: "黙る" },
+  { en: "(be) sick (and tired) of A", ja: "Aにうんざりしている" },
+  { en: "(be) similar to A", ja: "Aに似ている" },
+  { en: "single A out", ja: "Aを選び出す" },
+  { en: "sit up (late)", ja: "（遅くまで）起きている" },
+  { en: "slow (A) down", ja: "（Aの）スピードを落とす" },
+  { en: "so many A", ja: "同数のA" },
+  { en: "so much for A", ja: "Aはこれで終わり" },
+  { en: "so to say", ja: "言わば" },
+  { en: "so to speak", ja: "言わば" },
+  { en: "(be) sold out", ja: "売り切れている" },
+  { en: "some day", ja: "いつか" },
+  { en: "(be) something of a A", ja: "ちょっとしたAである" },
+  { en: "speak ill of A", ja: "Aについて悪口を言う" },
+  { en: "speak of A", ja: "Aについて話す" },
+  { en: "speak of A as B", ja: "AはBだと言う" },
+  { en: "speak out", ja: "思い切って言う" },
+  { en: "speak well of A", ja: "Aをほめる" },
+  { en: "speaking of A", ja: "Aのことと言えば" },
+  { en: "specialize in A", ja: "Aを専門に扱う" },
+  { en: "spend A on B", ja: "AをBに費やす" },
+  { en: "spring from A", ja: "Aに由来する" },
+  { en: "stand by A", ja: "Aを支持する" },
+  { en: "stand for A", ja: "Aを表す" },
+  { en: "stand out", ja: "目立つ" },
+  { en: "stare at A", ja: "Aをみつめる" },
+  { en: "stay away from A", ja: "Aに近づかない" },
+  { en: "stay up (late)", ja: "（遅くまで）起きている" },
+  { en: "step by step", ja: "一歩一歩" },
+  { en: "stick to A", ja: "Aを固く守る" },
+  { en: "stop A from Ving", ja: "AがVするのをやめさせる" },
+  { en: "A strike B as C", ja: "AがBにCという印象を与える" },
+  { en: "strip A of B", ja: "AからBをはぎとる" },
+  { en: "(be) subject to A", ja: "Aに支配される" },
+  { en: "submit to A", ja: "Aに屈する" },
+  { en: "substitute A for B", ja: "Bの代わりにAを使う" },
+  { en: "succeed in A", ja: "Aに成功する" },
+  { en: "succumb to A", ja: "Aに屈する" },
+  { en: "suffer from A", ja: "Aで苦しむ" },
+  { en: "sum (A) up", ja: "（Aを）要約する" },
+  { en: "(be) superior to A", ja: "Aより優れている" },
+  { en: "supply A with B", ja: "AにBを供給する" },
+  { en: "(be) supposed to V", ja: "Vすることになっている" },
+  { en: "(be) sure of A", ja: "Aを信じている" },
+  { en: "(be) sure to V", ja: "必ずVする" },
+  { en: "(be) surprised at A", ja: "Aに驚く" },
+  { en: "surrender to A", ja: "Aに降伏する" },
+  { en: "(be) suspected of A [Ving]", ja: "A（V）のことで疑われる" },
+  { en: "sympathize with A", ja: "Aに同情する" },
+  { en: "take A apart", ja: "Aをばらばらにする" },
+  { en: "take A as B", ja: "AをBと思う" },
+  { en: "take A away", ja: "Aを奪い去る" },
+  { en: "take A back", ja: "①Aを撤回する ②Aに昔のことを思い出させる" },
+  { en: "take A by the B", ja: "AのBをつかむ" },
+  { en: "take A down", ja: "Aを書き留める" },
+  { en: "take A for B", ja: "AをBと思う" },
+  { en: "take A for a drive", ja: "Aをドライブに連れて行く" },
+  { en: "take A for a walk", ja: "Aを散歩に連れて行く" },
+  { en: "take A for granted", ja: "Aを当然と思う" },
+  { en: "take A in", ja: "Aをだます" },
+  { en: "take A into account [consideration]", ja: "Aを考慮に入れる" },
+  { en: "take A on", ja: "①Aを引き受ける ②Aを帯びる" },
+  { en: "take A out", ja: "①Aを取り出す ②Aを連れ出す" },
+  { en: "take A over", ja: "Aを引き継ぐ" },
+  { en: "take A up", ja: "①Aを始める ②Aを占める" },
+  { en: "take a bath", ja: "入浴する" },
+  { en: "take a break", ja: "休憩する" },
+  { en: "take a chance [chances]", ja: "危険をおかす" },
+  { en: "take a look at A", ja: "Aを見る" },
+  { en: "take a nap", ja: "昼寝をする" },
+  { en: "take a rest", ja: "休む" },
+  { en: "take a ride", ja: "乗る" },
+  { en: "take a step", ja: "一歩進む" },
+  { en: "take a trip", ja: "旅をする" },
+  { en: "take a walk", ja: "散歩する" },
+  { en: "take account of A", ja: "Aを考慮する" },
+  { en: "take advantage of A", ja: "Aを利用する" },
+  { en: "take after A", ja: "Aに似ている" },
+  { en: "take an opportunity", ja: "機会をとらえる" },
+  { en: "take care of A", ja: "Aを世話する" },
+  { en: "take charge of A", ja: "Aを引き受ける" },
+  { en: "take delight in A", ja: "Aを楽しむ" },
+  { en: "take hold of A", ja: "Aをつかむ" },
+  { en: "take it for granted that ～", ja: "～を当然のことと思う" },
+  { en: "take it [things] easy", ja: "ゆっくりやる" },
+  { en: "take leave", ja: "休みを取る" },
+  { en: "take notice of A", ja: "Aに注意を払う" },
+  { en: "take (A) off", ja: "①Aを脱ぐ ②休暇としてとる ③離陸する" },
+  { en: "take one’s time (in) Ving", ja: "Vをゆっくりやる" },
+  { en: "take pains to V", ja: "Vしようと骨を折る" },
+  { en: "take part in A", ja: "Aに参加する" },
+  { en: "take pity on A", ja: "Aをあわれむ" },
+  { en: "take place", ja: "行われる" },
+  { en: "take pleasure in A", ja: "Aを楽しむ" },
+  { en: "take pride in A", ja: "Aを誇りに思う" },
+  { en: "take responsibility for A", ja: "Aの責任を取る" },
+  { en: "take the place of A", ja: "Aに取って代わる" },
+  { en: "take the trouble to V", ja: "わざわざVする" },
+  { en: "take to A", ja: "Aを好きになる" },
+  { en: "take turns Ving", ja: "かわるがわるVする" },
+  { en: "talk A into Ving", ja: "Aを説得してVさせる" },
+  { en: "talk A out of Ving", ja: "Aを説得してVをやめさせる" },
+  { en: "talk A over", ja: "Aについてくわしく話し合う" },
+  { en: "talk to [with] A", ja: "Aと話をする" },
+  { en: "tell a joke", ja: "冗談を言う" },
+  { en: "tell a lie", ja: "うそをつく" },
+  { en: "tell a story [a tale]", ja: "話をする" },
+  { en: "thank A for B", ja: "BのことでAに感謝する" },
+  { en: "thanks to A", ja: "Aのおかげで" },
+  { en: "that is (to say)", ja: "すなわち" },
+  { en: "the amount of A", ja: "Aの量" },
+  { en: "(all) the better for A", ja: "Aに比例していっそう良く" },
+  { en: "(be) the case with A", ja: "Aについて当てはまる" },
+  { en: "The fact is (that) ～", ja: "実は〜" },
+  { en: "the last A to V", ja: "①決してVしないA ②最後にVするA" },
+  { en: "the last time ～", ja: "～する最後の時に" },
+  { en: "the number of A", ja: "Aの数" },
+  { en: "The point is (that) ～", ja: "要するに〜" },
+  { en: "(be) the trouble with A", ja: "Aについて問題である" },
+  { en: "the way ～", ja: "①〜のやり方 ②〜のように" },
+  { en: "there is no Ving", ja: "Vすることはできない" },
+  { en: "think A out", ja: "Aを考え出す" },
+  { en: "think A over", ja: "Aを熟考する" },
+  { en: "think A up", ja: "Aを考え出す" },
+  { en: "think better of A", ja: "Aを考え直す" },
+  { en: "think much [highly] of A", ja: "Aを高く評価する Aを重んじる" },
+  { en: "think nothing of A [Ving]", ja: "A（Vすること）を苦にしない" },
+  { en: "(be) thinking of Ving", ja: "Vしようかと考えている" },
+  { en: "(be) through (with) A", ja: "Aを終えている" },
+  { en: "time after time", ja: "何度も何度も" },
+  { en: "time and (time) again", ja: "何度も何度も" },
+  { en: "(be) tired from A", ja: "Aで疲れている" },
+  { en: "(be) tired of A", ja: "Aに飽きている" },
+  { en: "to A’s disappointment", ja: "Aが失望したことに" },
+  { en: "to A’s joy", ja: "Aが喜んだことに" },
+  { en: "to A’s regret", ja: "Aが残念なことに" },
+  { en: "to A’s relief", ja: "Aがほっとしたことに" },
+  { en: "to A’s surprise", ja: "Aが驚いたことに" },
+  { en: "to be sure", ja: "確かに" },
+  { en: "to begin with", ja: "まずはじめに" },
+  { en: "(be) to blame for A", ja: "Aに対して責任がある" },
+  { en: "to go", ja: "持ち帰りの" },
+  { en: "to make matters worse", ja: "さらに悪いことには" },
+  { en: "to one’s heart’s content", ja: "心ゆくまで 存分に" },
+  { en: "to say nothing of A", ja: "Aは言うまでもなく" },
+  { en: "to say the least (of it)", ja: "控え目に言っても" },
+  { en: "to some extent [degree]", ja: "ある程度まで" },
+  { en: "To tell the truth", ja: "実を言うと" },
+  { en: "to the full", ja: "十分に" },
+  { en: "(be) to the point", ja: "的を射ている" },
+  { en: "(be) to V", ja: "①Vする予定だ ②Vするべきだ ③Vできる ④Vするつもりだ ⑤Vする運命だった" },
+  { en: "transform A into B", ja: "AをBに変える" },
+  { en: "translate A into B", ja: "AをBに翻訳する" },
+  { en: "(be) true of A", ja: "Aについて当てはまる" },
+  { en: "(be) true to A", ja: "Aに忠実だ" },
+  { en: "try A on", ja: "Aを試着する" },
+  { en: "try to V", ja: "Vしようとする" },
+  { en: "try Ving", ja: "試しにVしてみる" },
+  { en: "turn A down", ja: "①Aを拒絶する ②Aの音を下げる" },
+  { en: "turn A in", ja: "Aを提出する" },
+  { en: "turn A inside out", ja: "Aを裏返す" },
+  { en: "turn A into B", ja: "AをBに変える" },
+  { en: "turn A off", ja: "Aを消す" },
+  { en: "turn A on", ja: "Aをつける" },
+  { en: "turn A out", ja: "Aを消す" },
+  { en: "turn A over", ja: "Aをひっくり返す" },
+  { en: "turn A up", ja: "Aの音を上げる" },
+  { en: "turn A upside down", ja: "Aをひっくり返す" },
+  { en: "turn a deaf ear to A", ja: "Aに耳を貸さない" },
+  { en: "A turn into B", ja: "AがBに変わる" },
+  { en: "turn one’s back on A", ja: "Aにそっぽを向く" },
+  { en: "turn out (to be) A", ja: "Aだとわかる" },
+  { en: "turn pale", ja: "青ざめる" },
+  { en: "turn to A (for B)", ja: "（Bを求めて）Aに頼る" },
+  { en: "turn up", ja: "現れる" },
+  { en: "(be) typical of A", ja: "Aに特有である" },
+  { en: "(be) under attack", ja: "攻撃されている" },
+  { en: "(be) under construction", ja: "建設中である" },
+  { en: "(be) under control", ja: "制圧されている" },
+  { en: "(be) under pressure", ja: "プレッシャーを受けている" },
+  { en: "(be) under repair", ja: "修理中である" },
+  { en: "(be) under stress", ja: "ストレスを受けている" },
+  { en: "(be) under the influence of A", ja: "Aの影響を受けている" },
+  { en: "under way", ja: "進行中で" },
+  { en: "(be) unique to A", ja: "Aに特有である" },
+  { en: "(be) unwilling to V", ja: "Vしたがらない" },
+  { en: "(be) up to A", ja: "①Aの意思しだいだ ②Aをくわだてている" },
+  { en: "(be) up to date", ja: "時代に合った" },
+  { en: "use A up", ja: "Aを使い果たす" },
+  { en: "(be) used to A [Ving]", ja: "A（Vすること）に慣れている" },
+  { en: "used to V", ja: "かつてVした" },
+  { en: "view A as B", ja: "AをBとみなす" },
+  { en: "wait for A", ja: "Aを待つ" },
+  { en: "wait on A", ja: "Aに給仕する" },
+  { en: "wake (A) up", ja: "①目覚める ②Aを目覚めさせる" },
+  { en: "waste A on B", ja: "AをBに浪費する" },
+  { en: "watch one’s step", ja: "足元に気をつける" },
+  { en: "watch out (for A)", ja: "（Aに）注意する" },
+  { en: "wear A out", ja: "Aをすり減らす" },
+  { en: "(be) weary of A", ja: "Aにうんざりしている" },
+  { en: "well done", ja: "①よくやった ②ウェルダン" },
+  { en: "What about A [Ving]?", ja: "Aはどうですか" },
+  { en: "what ... do with A", ja: "Aをどう扱うか" },
+  { en: "What do you say to Ving?", ja: "Vしてはいかがですか" },
+  { en: "What ~ for?", ja: "何を求めて〜か" },
+  { en: "What is A like?", ja: "Aはどんなものか" },
+  { en: "what is called A", ja: "いわゆるA" },
+  { en: "what is", ja: "比較級 さらに〜なことには" },
+  { en: "what we [they, you] call A", ja: "いわゆるA" },
+  { en: "what with A and B", ja: "AやらBやらで" },
+  { en: "What’s going on?", ja: "何が起こっているのか" },
+  { en: "What’s the matter with A?", ja: "Aはどうしたのか" },
+  { en: "when it comes to A", ja: "Aのこととなると" },
+  { en: "(be) willing to V", ja: "喜んでVする" },
+  { en: "wipe A out", ja: "Aを全滅させる" },
+  { en: "wish for A", ja: "Aを望む" },
+  { en: "with A on", ja: "Aを身に着けて" },
+  { en: "with a view to Ving", ja: "Vする目的で" },
+  { en: "with care", ja: "注意深く" },
+  { en: "with difficulty", ja: "苦労して" },
+  { en: "with ease", ja: "容易に" },
+  { en: "with interest", ja: "興味を持って" },
+  { en: "with pleasure", ja: "喜んで" },
+  { en: "with regard to A", ja: "Aに関して" },
+  { en: "(be) within A of B", ja: "BからA以内である" },
+  { en: "without fail", ja: "かならず" },
+  { en: "work on A", ja: "Aに取り組む" },
+  { en: "work (A) out", ja: "①Aを考え出す ②うまくいく" },
+  { en: "(be) worn out", ja: "疲れ果てている" },
+  { en: "(be) worried about A", ja: "Aを心配している" },
+  { en: "worry about A", ja: "Aを心配する" },
+  { en: "(O) (be) worth (Ving)", ja: "（OはVする）価値がある" },
+  { en: "(be) worth (A’s) while", ja: "価値がある" },
+  { en: "(be) worthy of A", ja: "Aに値する" },
+  { en: "(S) (be) worthy to (V)", ja: "（Vする）にふさわしい" },
+  { en: "would like A to V", ja: "AにVしてほしい" },
+  { en: "would like to V", ja: "Vしたい" },
+  { en: "would rather V1 (than V2)", ja: "（V2するより）V1したい" },
+  { en: "Would you care for A?", ja: "Aはいかがですか" },
+  { en: "write A down", ja: "Aを書き留める" },
+  { en: "(be) wrong with A", ja: "Aはおかしい" },
+  { en: "yield to A", ja: "Aに屈する" },
+  { en: "you see", ja: "ご承知のとおり" },
+];
+
+// =======================
+//  保存キー（熟語アプリ構成に寄せる）
+// =======================
+const KEY_AUDIO       = "vocab_app_audio_on_v1";
+
+// 全モード/間違いモードを別で進行保存
+const KEY_STATE_ALL   = "vocab_state_all_v1";
+const KEY_STATE_WRONG = "vocab_state_wrong_v1";
+
+// 間違いセット（en文字列で管理）
+const KEY_WRONG_SET   = "vocab_wrong_set_v1";
+
+// 間違いのみモードON/OFF
+const KEY_WRONG_ONLY  = "vocab_wrong_only_v1";
+
+// テーマ（ライト/ダーク）
+const KEY_THEME       = "vocab_theme_v1";
+
+// =======================
+//  ユーティリティ
+// =======================
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function saveJSON(key, obj){ localStorage.setItem(key, JSON.stringify(obj)); }
+function loadJSON(key){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }catch{ return null; }
+}
+
+// =======================
+//  テーマ（ライト/ダーク）
+// =======================
+function loadTheme(){
+  const v = localStorage.getItem(KEY_THEME);
+  return (v === "dark" || v === "light") ? v : "light";
+}
+function saveTheme(theme){
+  localStorage.setItem(KEY_THEME, theme);
+}
+function applyTheme(theme){
+  const isDark = theme === "dark";
+  document.body.classList.toggle("dark", isDark);
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.textContent = isDark ? "☀️ ライト" : "🌙 ダーク";
+}
+
+// =======================
+//  発音（Web Speech API）
+// =======================
+function pickEnglishVoice(){
+  const voices = speechSynthesis.getVoices();
+  const preferred =
+    voices.find(v => /Samantha|Karen/i.test(v.name || "")) ||
+    voices.find(v => (v.lang || "").toLowerCase().startsWith("en-us")) ||
+    voices.find(v => (v.lang || "").toLowerCase().startsWith("en-gb")) ||
+    voices.find(v => (v.lang || "").toLowerCase().startsWith("en")) ||
+    null;
+  return preferred;
+}
+
+function loadAudioOn(){
+  const v = localStorage.getItem(KEY_AUDIO);
+  return v === null ? true : v === "1"; // デフォON
+}
+function saveAudioOn(on){
+  localStorage.setItem(KEY_AUDIO, on ? "1" : "0");
+}
+function updateAudioUI(){
+  const on = loadAudioOn();
+  document.getElementById("audioToggle").textContent = on ? "🔊 発音：ON" : "🔇 発音：OFF";
+}
+
+function speakEnglish(text){
+  if (!window.speechSynthesis) return;
+  if (!loadAudioOn()) return;
+
+  try{ speechSynthesis.cancel(); }catch{}
+  const u = new SpeechSynthesisUtterance(String(text));
+  const voice = pickEnglishVoice();
+  u.lang = voice?.lang || "en-US";
+  if (voice) u.voice = voice;
+  u.rate = 1.0;
+  u.pitch = 1.0;
+
+  speechSynthesis.speak(u);
+}
+
+// =======================
+//  間違いリスト（Set）
+// =======================
+function loadWrongSet(){
+  const arr = loadJSON(KEY_WRONG_SET);
+  return new Set(Array.isArray(arr) ? arr : []);
+}
+function saveWrongSet(set){
+  saveJSON(KEY_WRONG_SET, Array.from(set));
+}
+function updateWrongCountUI(){
+  const set = loadWrongSet();
+  document.getElementById("wrongCount").textContent = `覚え直し: ${set.size}`;
+}
+
+// =======================
+//  出題モード（全 / 間違いのみ）
+// =======================
+function loadWrongOnly(){
+  return localStorage.getItem(KEY_WRONG_ONLY) === "1";
+}
+function saveWrongOnly(on){
+  localStorage.setItem(KEY_WRONG_ONLY, on ? "1" : "0");
+}
+function getActiveStateKey(){
+  return loadWrongOnly() ? KEY_STATE_WRONG : KEY_STATE_ALL;
+}
+
+// 出題プール（VOCABのindex配列）
+function getPoolIndices(){
+  if (!loadWrongOnly()){
+    return [...Array(VOCAB.length).keys()];
+  }
+  const set = loadWrongSet();
+  const idxs = [];
+  for (let i = 0; i < VOCAB.length; i++){
+    if (set.has(VOCAB[i].en)) idxs.push(i);
+  }
+  return idxs;
+}
+
+function freshStateForPool(poolIdxs){
+  const order = shuffle([...Array(poolIdxs.length).keys()]);
+  return { poolIdxs, order, index: 0, phase: 0 }; // phase:0英 1日
+}
+
+function loadState(){
+  const key = getActiveStateKey();
+  const st = loadJSON(key);
+  if (!st) return null;
+  if (!Array.isArray(st.poolIdxs) || !Array.isArray(st.order)) return null;
+  if (typeof st.index !== "number" || typeof st.phase !== "number") return null;
+  if (st.phase !== 0 && st.phase !== 1) return null;
+
+  // プールが変化したら作り直す
+  const poolNow = getPoolIndices();
+  if (st.poolIdxs.length !== poolNow.length) return null;
+
+  return st;
+}
+function saveState(st){
+  const key = getActiveStateKey();
+  saveJSON(key, st);
+}
+
+function getCurrentItem(st){
+  if (!st.poolIdxs.length) return null;
+  const poolIndex = st.poolIdxs[ st.order[st.index] ]; // VOCABのindex
+  return { item: VOCAB[poolIndex], vocabIndex: poolIndex };
+}
+
+// =======================
+//  UI
+// =======================
+function setUI(st){
+  const wordEl = document.getElementById("word");
+  const meaningEl = document.getElementById("meaning");
+  const progressEl = document.getElementById("progress");
+  // const modeEl = document.getElementById("mode");
+  const btn = document.getElementById("nextBtn");
+
+  const missBox = document.getElementById("missBox");
+  const missToggle = document.getElementById("missToggle");
+
+  // modeEl.textContent = loadWrongOnly() ? "単語：英→日（間違いのみ）" : "単語：英→日";
+
+  // プールが空なら案内
+  if (!st.poolIdxs.length){
+    wordEl.textContent = "復習リストが空です";
+    meaningEl.textContent = "「復習開始」をOFFにするか、復習リストを登録してね";
+    progressEl.textContent = "0 / 0";
+    btn.textContent = "はじめる";
+    missBox.classList.remove("show");
+    missToggle.checked = false;
+    return;
+  }
+
+  // 1周終わったら再シャッフル
+  if (st.index >= st.poolIdxs.length){
+    st = freshStateForPool(getPoolIndices());
+    saveState(st);
+  }
+
+  const cur = getCurrentItem(st);
+  const current = cur.item;
+
+  progressEl.textContent = `${st.index + 1} / ${st.poolIdxs.length}`;
+
+  // この単語がすでに間違いリストにあるか
+  const wrongSet = loadWrongSet();
+  missToggle.checked = wrongSet.has(current.en);
+
+  if (st.phase === 0){
+    wordEl.textContent = current.en;
+    meaningEl.textContent = "";
+    btn.textContent = "日本語を表示（答え合わせ）";
+
+    missBox.classList.remove("show");
+
+    // 英語が表示された瞬間に発音（ONのとき）
+    speakEnglish(current.en);
+
+  } else {
+    wordEl.textContent = current.en;
+    meaningEl.textContent = current.ja;
+    btn.textContent = "正解だったかな？次へGO！";
+
+    // 答え合わせ中だけチェック欄表示
+    missBox.classList.add("show");
+  }
+}
+
+function nextAction(){
+  let st = loadState();
+  if (!st){
+    const pool = getPoolIndices();
+    st = freshStateForPool(pool);
+  }
+
+  if (st.phase === 0){
+    st.phase = 1;
+  } else {
+    st.phase = 0;
+    st.index += 1;
+  }
+  saveState(st);
+  setUI(st);
+}
+
+function resetAll(){
+  try{ speechSynthesis.cancel(); }catch{}
+  const pool = getPoolIndices();
+  const st = freshStateForPool(pool);
+  saveState(st);
+  setUI(st);
+}
+
+// =======================
+//  初期化
+// =======================
+function init(){
+  if (!VOCAB.length){
+    document.getElementById("word").textContent = "VOCABが空です";
+    return;
+  }
+
+  // テーマ初期化
+  applyTheme(loadTheme());
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const now = loadTheme();
+    const next = (now === "dark") ? "light" : "dark";
+    saveTheme(next);
+    applyTheme(next);
+  });
+
+  // voice読み込み遅延対策（iOS/Safari）
+  if (window.speechSynthesis){
+    speechSynthesis.onvoiceschanged = () => updateAudioUI();
+    setTimeout(updateAudioUI, 200);
+    setTimeout(updateAudioUI, 800);
+  } else {
+    document.getElementById("audioToggle").disabled = true;
+    document.getElementById("speakBtn").disabled = true;
+  }
+
+  // 間違い数表示
+  updateWrongCountUI();
+
+  // 間違いのみトグル初期化
+  const wrongOnlyToggle = document.getElementById("wrongOnlyToggle");
+  wrongOnlyToggle.checked = loadWrongOnly();
+  wrongOnlyToggle.addEventListener("change", () => {
+    saveWrongOnly(wrongOnlyToggle.checked);
+
+    // モード切替したら、そのモードで最初から
+    const pool = getPoolIndices();
+    const st = freshStateForPool(pool);
+    saveState(st);
+
+    updateWrongCountUI();
+    setUI(st);
+  });
+
+  // 間違いチェック（答え合わせ中に押す）
+  document.getElementById("missToggle").addEventListener("change", (e) => {
+    const st = loadState();
+    if (!st) return;
+    const cur = getCurrentItem(st);
+    if (!cur) return;
+
+    const set = loadWrongSet();
+    if (e.target.checked) set.add(cur.item.en);
+    else set.delete(cur.item.en);
+
+    saveWrongSet(set);
+    updateWrongCountUI();
+  });
+
+  // 間違いリスト消去
+  document.getElementById("clearWrongBtn").addEventListener("click", () => {
+    saveWrongSet(new Set());
+    updateWrongCountUI();
+
+    // 間違いのみモード中ならプールが空になるのでUI更新
+    const pool = getPoolIndices();
+    const st = freshStateForPool(pool);
+    saveState(st);
+    setUI(st);
+  });
+
+  // 進行状態の初期化
+  const pool = getPoolIndices();
+  let st = loadState();
+  if (!st) st = freshStateForPool(pool);
+  saveState(st);
+  setUI(st);
+
+  // 次へ / リセット
+  document.getElementById("nextBtn").addEventListener("click", nextAction);
+  document.getElementById("resetBtn").addEventListener("click", resetAll);
+
+  // 発音ボタン
+  document.getElementById("speakBtn").addEventListener("click", () => {
+    const st2 = loadState();
+    if (!st2) return;
+    const cur = getCurrentItem(st2);
+    if (!cur) return;
+    speakEnglish(cur.item.en);
+  });
+
+  // 発音ON/OFFトグル
+  document.getElementById("audioToggle").addEventListener("click", () => {
+    const on = loadAudioOn();
+    saveAudioOn(!on);
+    updateAudioUI();
+
+    // ONにした瞬間、今表示中の英語を1回読む（phase=0の時だけ）
+    const st2 = loadState();
+    if (st2 && st2.phase === 0){
+      const cur = getCurrentItem(st2);
+      if (cur) speakEnglish(cur.item.en);
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

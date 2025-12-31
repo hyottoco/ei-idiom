@@ -615,7 +615,7 @@
 
       <button class="small toggle" id="audioToggle" type="button">🔊</button>
       <button class="small toggle" id="themeToggle" type="button">🌙</button>
-      <button class="small toggle" id="orderToggle" type="button">🔀 ランダム</button>
+      <button class="small toggle" id="orderToggle" type="button">🔀</button>
     </div>
 
     <div class="row">
@@ -869,9 +869,9 @@ function updateTopUI(){
 
   // toggles
   wrongOnlyToggle.checked = !!state.wrongOnly;
-  orderToggle.textContent = state.orderRandom ? "🔀 ランダム" : "➡️ 順番";
+  orderToggle.textContent = state.orderRandom ? "🔀" : "➡️";
   audioToggle.textContent = state.audioOn ? "🔊" : "🔇";
-  themeToggle.textContent = state.dark ? "☀️" : "🌙";
+  themeToggle.textContent = state.dark ? "🌙" : "☀️";
 
   // wrong count
   const base = inRangeIndices();

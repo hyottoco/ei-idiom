@@ -1005,11 +1005,13 @@ wrongOnlyToggle.addEventListener("change", () => {
 
 // ✅ 復習チェックは「答え表示中（phase=1）」だけで使う
 missBox.addEventListener("click", (e) => {
+  // if(state.phase !== 1) return;
   if(e.target && e.target.id === "missToggle") return;
   missToggle.checked = !missToggle.checked;
   missToggle.dispatchEvent(new Event("change"));
 });
 missToggle.addEventListener("change", () => {
+  // if(state.phase !== 1) return;
   const real = currentRealIndex();
   if(real === null) return;
   if(missToggle.checked) state.wrongSet[real] = true;

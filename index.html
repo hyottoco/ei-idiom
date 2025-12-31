@@ -37,7 +37,7 @@
     body{
       font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
       margin: 0;
-      padding: 10px;
+      padding: 5px;
       background: var(--bg);
       color: var(--fg);
       transition: background .2s ease, color .2s ease;
@@ -61,6 +61,29 @@
       margin-top: 10px;
     }
 
+    /* ✅ 復習行：左(復習) / 右(🔊🌙🔀) に分ける */
+    .reviewRow{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:nowrap; /* まずは1行優先 */
+    }
+    .reviewRow-right{
+      margin-left:auto; /* ←右端へ押し出す */
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    /* 画面が狭いときだけ折り返し（SE2/SE3対策） */
+    @media (max-width: 360px){
+      .reviewRow{ flex-wrap:wrap; }
+      .reviewRow-right{
+        width:100%;
+        justify-content:flex-end;
+        margin-left:0;
+      }
+    }
+
     .badge,
     button.small,
     .pill{
@@ -77,6 +100,8 @@
       gap: 8px;
       user-select: none;
       white-space: nowrap;
+      padding-top: 6px;     /* もとは 10px */
+      padding-bottom: 6px;  /* もとは 10px */
     }
 
     .pill{ cursor: pointer; }
@@ -172,7 +197,7 @@
 
     .rangeInput{
       width: 3.5em;
-      padding: 6px 8px;
+      padding: 4px 4px;
       border: 1px solid var(--bd);
       border-radius: 10px;
       font-size: 14px;
@@ -561,8 +586,8 @@
       flex: 0 0 auto;
       display:flex;
       align-items:center;
-      gap:5px;
-      padding: 10px 10px;
+      gap:4px;              /* ✅ 間隔を少し狭める */
+      padding: 8px 8px;
       border: 1px solid var(--bd);
       border-radius: 999px;
       background: transparent;
@@ -574,24 +599,53 @@
       background: rgba(255,255,255,0.03);
       color: #d6d6d8;
     }
-    .speedBox .label{
-      font-size: 13px;
-      opacity: .9;
-      white-space: nowrap;
-    }
     .speedBox input[type="range"]{
-      width: 50px;         /* 好きな長さ */
+      width: 44px;         /* スライダー横幅（必要ならここを変更） */
       display: block;
-      margin: 0 auto;
+      margin: 0;           /* ✅ 余計な余白を消す */
     }
     .speedBox .val{
       font-size: 13px;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
       opacity: .9;
-      min-width: 1.0em;
+      min-width: 2.0em;    /* ✅ 数字が揺れない最低幅 */
       text-align: right;
     }
+    /* ✅ 探す行：必ず1行（折り返し禁止） */
+    .searchRow{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap: nowrap;        /* これが重要：1行固定 */
+    }
+
+    .searchRow-right{
+      margin-left:auto;         /* 右寄せ */
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap: nowrap;
+      min-width: 0;             /* 狭い端末で詰めやすくする */
+    }
+
+    /* 右側（速度UI）を詰めてでも1行に収める */
+    .searchRow-right .speedBox{
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+    .searchRow-right .speedBox input[type="range"]{
+      width: 44px;              /* 必要ならここをさらに小さく(例: 38px) */
+    }
+    .searchRow-right .speedBox .val{
+      min-width: 2.2em;         /* 1.0x が入る最低限 */
+    }
+
+    /* 「発音」ボタンが勝手に右に飛ぶのを防ぐ（この行だけ） */
+    .searchRow #speakBtn{
+      margin-left: 0;
+    }
+
   </style>
 </head>
 
@@ -607,15 +661,18 @@
       </div>
     </div>
 
-    <div class="row">
+    <!-- ✅ ここだけ構造を変更：右側3ボタンをまとめた -->
+    <div class="row reviewRow">
       <label class="pill togglePill reviewUI" for="wrongOnlyToggle">
         <input type="checkbox" id="wrongOnlyToggle" />
         復習 <span class="count" id="wrongCount">(0)</span>
       </label>
 
-      <button class="small toggle" id="audioToggle" type="button">🔊</button>
-      <button class="small toggle" id="themeToggle" type="button">🌙</button>
-      <button class="small toggle" id="orderToggle" type="button">🔀</button>
+      <div class="reviewRow-right">
+        <button class="small toggle" id="audioToggle" type="button">🔊</button>
+        <button class="small toggle" id="themeToggle" type="button">🌙</button>
+        <button class="small toggle" id="orderToggle" type="button">🔀</button>
+      </div>
     </div>
 
     <div class="row">
@@ -647,18 +704,19 @@
       <span class="label">復習リストに追加</span>
     </label>
 
-    <div class="btns">
+    <div class="btns searchRow">
       <button id="wheelOpenBtn" type="button">🎡 探す</button>
 
-      <!-- ✅ ここが追加：探す と 発音 の間 -->
-      <div class="speedBox" title="発音速度を調整します">
-        <!-- <span class="label">速さ</span> -->
-        <input id="rateRange" type="range" min="0.8" max="1.2" step="0.1" value="1.0" />
-        <span id="rateLabel" class="val">1.0x</span>
-      </div>
+      <div class="searchRow-right">
+        <div class="speedBox" title="発音速度を調整します">
+          <input id="rateRange" type="range" min="0.8" max="1.2" step="0.1" value="1.0" />
+          <span id="rateLabel" class="val">1.0x</span>
+        </div>
 
-      <button id="speakBtn" type="button">🔊 発音</button>
+        <button id="speakBtn" type="button">🔊 発音</button>
+      </div>
     </div>
+
   </div>
 
   <!-- 🎡 モーダル -->
@@ -775,24 +833,23 @@ const wheelHint = $("wheelHint");
 const APP_KEY = "ei_idiom_state_v1";
 
 const state = {
-  idx: 0,                 // 現在表示している index（0-based）
-  showMeaning: false,     // 和訳表示中か
-  orderRandom: true,      // ランダムか
-  audioOn: true,          // 発音有効か
-  dark: false,            // ダークか
-  wrongSet: {},           // 復習リスト（index -> true）
-  rangeFrom: 1,           // 1-based
+  idx: 0,
+  showMeaning: false,
+  orderRandom: true,
+  audioOn: true,
+  dark: false,
+  wrongSet: {},
+  rangeFrom: 1,
   rangeTo: Math.min(10, VOCAB.length),
-  shuffled: [],           // 範囲内の並び（index配列）
-  wrongOnly: false,       // 復習モード
-  rate: 1.0               // ✅ 発音速度
+  shuffled: [],
+  wrongOnly: false,
+  rate: 1.0
 };
 
 function loadState(){
   const saved = LS.get(APP_KEY, null);
   if(!saved) return;
 
-  // 互換のため安全に取り込み
   if(typeof saved.idx === "number") state.idx = saved.idx;
   if(typeof saved.showMeaning === "boolean") state.showMeaning = saved.showMeaning;
   if(typeof saved.orderRandom === "boolean") state.orderRandom = saved.orderRandom;
@@ -806,9 +863,7 @@ function loadState(){
   if(typeof saved.rate === "number") state.rate = saved.rate;
 }
 
-function saveState(){
-  LS.set(APP_KEY, state);
-}
+function saveState(){ LS.set(APP_KEY, state); }
 
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
@@ -859,26 +914,21 @@ function updateTopUI(){
   const cur = total ? (state.idx + 1) : 0;
   progressEl.textContent = `${cur} / ${total}`;
 
-  // No表示（元の通し番号）
   const real = currentRealIndex();
   wordNumHeader.textContent = (real === null) ? "" : String(real + 1);
 
-  // range inputs
   rangeFrom.value = String(state.rangeFrom);
   rangeTo.value = String(state.rangeTo);
 
-  // toggles
   wrongOnlyToggle.checked = !!state.wrongOnly;
   orderToggle.textContent = state.orderRandom ? "🔀" : "➡️";
   audioToggle.textContent = state.audioOn ? "🔊" : "🔇";
   themeToggle.textContent = state.dark ? "🌙" : "☀️";
 
-  // wrong count
   const base = inRangeIndices();
   const cnt = base.filter(i => state.wrongSet[i]).length;
   wrongCount.textContent = `(${cnt})`;
 
-  // 速度
   rateRange.value = String(state.rate);
   rateLabel.textContent = `${state.rate.toFixed(1)}x`;
 }
@@ -900,11 +950,9 @@ function render(){
   wordTextEl.textContent = item.en;
   meaningEl.textContent = state.showMeaning ? item.ja : "";
 
-  // missToggle（復習登録）の状態同期
   missBox.classList.add("show");
   missToggle.checked = !!state.wrongSet[real];
 
-  // 範囲が変わっても見た目が安定するように
   updateTopUI();
   saveState();
 }
@@ -923,10 +971,7 @@ function speak(text){
 
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
-
-  // ✅ ここがポイント：速度
   u.rate = clamp(Number(state.rate) || 1.0, 0.1, 10);
-
   window.speechSynthesis.speak(u);
 }
 
@@ -938,15 +983,7 @@ function toggleMeaning(){
   render();
 }
 
-function next(){
-  if(state.shuffled.length === 0) return;
-  state.idx = clamp(state.idx + 1, 0, state.shuffled.length - 1);
-  state.showMeaning = false;
-  render();
-}
-
 function startOrNext(){
-  // 最初は「はじめる」→表示して次へボタン化
   if(nextBtn.dataset.started !== "1"){
     nextBtn.dataset.started = "1";
     nextBtn.textContent = "正解だったかな？次へGO！";
@@ -954,9 +991,7 @@ function startOrNext(){
     render();
     return;
   }
-  // 次へ
   if(state.idx >= state.shuffled.length - 1){
-    // 最後なら最初へ戻す（好みで変更OK）
     state.idx = 0;
   }else{
     state.idx++;
@@ -966,7 +1001,6 @@ function startOrNext(){
 }
 
 function hardReset(){
-  // 初期状態に（復習リストは残す方針）
   state.idx = 0;
   state.showMeaning = false;
   buildOrder();
@@ -993,7 +1027,7 @@ function applyRangeFromInputs(){
 ========================= */
 let wheelFiltered = [];
 let wheelShown = 0;
-let wheelActiveIndex = 0; // wheelFiltered内のindex
+let wheelActiveIndex = 0;
 const WHEEL_BATCH = 120;
 
 function openWheel(){
@@ -1028,7 +1062,6 @@ function rebuildWheelList(){
 
   renderWheelItems();
   updateWheelHint();
-  // 先頭へ
   wheelViewport.scrollTop = 0;
 }
 
@@ -1053,7 +1086,6 @@ function renderWheelItems(){
 
     li.addEventListener("click", () => {
       wheelActiveIndex = idx;
-      // active描画
       [...wheelList.querySelectorAll(".wheelItem")].forEach(x => x.classList.remove("isActive"));
       li.classList.add("isActive");
     });
@@ -1082,12 +1114,10 @@ function wheelJumpToSelected(){
   const picked = wheelFiltered[wheelActiveIndex];
   if(!picked) return;
 
-  // 現在の並びに picked.i が存在しない場合（復習のみ等）もある
   const pos = state.shuffled.indexOf(picked.i);
   if(pos >= 0){
     state.idx = pos;
   }else{
-    // なければ、その単語を表示するために “一時的に”通常モードへ
     state.wrongOnly = false;
     wrongOnlyToggle.checked = false;
     buildOrder();
@@ -1113,8 +1143,6 @@ function escapeHtml(s){
    イベント
 ========================= */
 nextBtn.addEventListener("click", startOrNext);
-
-// 英語表示部タップで和訳表示トグル（好みでON/OFF）
 wordTextEl.addEventListener("click", toggleMeaning);
 
 resetBtn.addEventListener("click", hardReset);
@@ -1127,8 +1155,7 @@ wrongOnlyToggle.addEventListener("change", () => {
 });
 
 missBox.addEventListener("click", (e) => {
-  // ラベル部分タップでも切り替わるように
-  if(e.target && e.target.id === "missToggle") return; // checkbox直タップはそのまま
+  if(e.target && e.target.id === "missToggle") return;
   missToggle.checked = !missToggle.checked;
   missToggle.dispatchEvent(new Event("change"));
 });
@@ -1143,7 +1170,6 @@ missToggle.addEventListener("change", () => {
 
 audioToggle.addEventListener("click", () => {
   state.audioOn = !state.audioOn;
-  // OFFにしたら発話も止める
   if(!state.audioOn){
     try{ window.speechSynthesis.cancel(); }catch(e){}
   }
@@ -1162,18 +1188,15 @@ orderToggle.addEventListener("click", () => {
   render();
 });
 
-// 範囲入力（変更したら反映）
 rangeFrom.addEventListener("change", applyRangeFromInputs);
 rangeTo.addEventListener("change", applyRangeFromInputs);
 
-// ✅ 速度スライダー
 rateRange.addEventListener("input", () => {
   state.rate = Number(rateRange.value);
   rateLabel.textContent = `${state.rate.toFixed(1)}x`;
   saveState();
 });
 
-// 発音ボタン
 speakBtn.addEventListener("click", () => {
   const real = currentRealIndex();
   if(real === null) return;
@@ -1181,7 +1204,6 @@ speakBtn.addEventListener("click", () => {
   speak(item.en);
 });
 
-// wheel
 wheelOpenBtn.addEventListener("click", openWheel);
 wheelCloseBtn.addEventListener("click", closeWheel);
 wheelClearSearchBtn.addEventListener("click", () => {
@@ -1192,12 +1214,10 @@ wheelSearchInput.addEventListener("input", () => rebuildWheelList());
 wheelMoreBtn.addEventListener("click", wheelMore);
 wheelJumpBtn.addEventListener("click", wheelJumpToSelected);
 
-// overlayクリックで閉じる（外側だけ）
 wheelOverlay.addEventListener("click", (e) => {
   if(e.target === wheelOverlay) closeWheel();
 });
 
-// ESCで閉じる
 document.addEventListener("keydown", (e) => {
   if(e.key === "Escape" && wheelOverlay.classList.contains("show")){
     closeWheel();
@@ -1208,37 +1228,30 @@ document.addEventListener("keydown", (e) => {
    初期化
 ========================= */
 (function init(){
-  // 初期値（範囲の上限）
   state.rangeTo = Math.min(state.rangeTo, VOCAB.length);
   rangeTo.max = String(VOCAB.length);
   rangeFrom.max = String(VOCAB.length);
 
   loadState();
 
-  // load後にmax反映（VOCAB長に合わせて）
   state.rangeFrom = clamp(state.rangeFrom, 1, VOCAB.length);
   state.rangeTo   = clamp(state.rangeTo,   1, VOCAB.length);
 
-  // ダーク反映
   document.body.classList.toggle("dark", state.dark);
 
-  // 速度UIに反映
   state.rate = clamp(Number(state.rate) || 1.0, 0.6, 1.4);
   rateRange.value = String(state.rate);
   rateLabel.textContent = `${state.rate.toFixed(1)}x`;
 
-  // 並びを作る（保存が壊れてる場合にも対応）
   if(!Array.isArray(state.shuffled) || state.shuffled.length === 0){
     buildOrder();
   }else{
-    // 範囲が変わっていて shuf が不整合なら作り直し
     const base = new Set(inRangeIndices());
     const ok = state.shuffled.every(i => base.has(i));
     if(!ok) buildOrder();
     state.idx = clamp(state.idx, 0, state.shuffled.length - 1);
   }
 
-  // ボタンの文言
   nextBtn.textContent = "はじめる";
   nextBtn.dataset.started = "0";
 

@@ -92,7 +92,7 @@
     }
 
     button{
-      font-size: 14px;
+      font-size: 16px;
       padding: 10px 14px;
       border-radius: var(--btn-radius);
       border: 1px solid var(--bd);
@@ -550,7 +550,15 @@
       align-self: stretch;      /* ← 親の幅に素直に合わせる */
       flex: 1 1 auto;           /* ← 伸び縮みOKにする */
       display: flex;            /* ← inline-flex を打ち消す */
+      cursor: pointer;           /* 押せる感じ */
+      
     }
+
+    /* チェック自体は直接タップできるまま */
+    #missBox input{
+      cursor: pointer;
+    }
+
   </style>
 </head>
 
@@ -601,10 +609,11 @@
       <button class="primary" id="nextBtn" type="button">はじめる</button>
     </div>
 
-    <div class="missBox reviewUI" id="missBox">
+    <label class="missBox reviewUI" id="missBox">
       <input type="checkbox" id="missToggle">
-      <label class="label" for="missToggle">復習リストに追加</label>
-    </div>
+      <span class="label">復習リストに追加</span>
+    </label>
+
 
     <div class="btns">
       <button id="wheelOpenBtn" type="button">🎡 探す</button>

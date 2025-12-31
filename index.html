@@ -92,8 +92,8 @@
     }
 
     button{
-      font-size: 18px;
-      padding: 12px 14px;
+      font-size: 14px;
+      padding: 10px 14px;
       border-radius: var(--btn-radius);
       border: 1px solid var(--bd);
       background: #fff;
@@ -227,7 +227,7 @@
     .missBox{
       display:none;
       margin-top: 12px;
-      padding: 10px 12px;
+      padding: 6px;
       border: 1px solid var(--bd);
       border-radius: 12px;
       gap: 10px;
@@ -241,7 +241,7 @@
     }
     .missBox.show{ display:inline-flex; }
     .missBox input{ width: 22px; height: 22px; margin:0; }
-    .missBox .label{ font-size: 16px; user-select: none; white-space: nowrap; display: inline-block;}
+    .missBox .label{ font-size: 14px; user-select: none; white-space: nowrap; display: inline-block;}
 
     /* ダークモード */
     body.dark{
@@ -538,6 +538,18 @@
       .card{
         max-width: 300px;  /* 好みで 520〜680 くらいで調整 */
       }
+    }
+        #nextBtn{
+      width: 100%;
+    }
+        /* 復習リストに追加（枠）のサイズ調整 */
+    #missBox{
+      width: 100%;
+      box-sizing: border-box;   /* ← はみ出し対策の決定打 */
+      justify-content: center;
+      align-self: stretch;      /* ← 親の幅に素直に合わせる */
+      flex: 1 1 auto;           /* ← 伸び縮みOKにする */
+      display: flex;            /* ← inline-flex を打ち消す */
     }
   </style>
 </head>
@@ -2311,12 +2323,12 @@ function setUI(st){
 
   if (st.phase === 0){
     meaningEl.textContent = "";
-    btn.textContent = "日本語訳を確認 （答え合わせ）";
+    btn.textContent = "日本語訳を確認  （答え合わせ）";
     missBox.classList.remove("show");
     speakEnglish(current.en);
   } else {
     meaningEl.textContent = current.ja;
-    btn.textContent = "正解だったかな？ 次の単語へ！";
+    btn.textContent = "正解だったかな？  次の単語へ！";
     missBox.classList.add("show");
   }
 }

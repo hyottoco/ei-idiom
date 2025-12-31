@@ -427,6 +427,21 @@
     .wheelHint{ font-size: 12px; opacity: .75; padding: 0 12px 10px; user-select: none; min-height: 1.2em; }
     .mini{ font-size: 14px; padding: 10px 12px; border-radius: 999px; border: 1px solid var(--bd); background: transparent; color: inherit; }
     body.dark .mini{ border-color: var(--bd-dark); background: rgba(255,255,255,0.03); }
+
+    /* ✅ 1行目（0/0 も含めて）高さを揃える */
+    .topbar .badge,
+    .topbar-right button.small{
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    /* ✅ 2行目（復習・🔊・🌙・🔀）を同じ高さで少し大きく */
+    .reviewRow .pill,
+    .reviewRow button.small{
+      padding-top: 12px;     /* ← 高さを出す */
+      padding-bottom: 12px; /* ← 高さを出す */
+    }
+
   </style>
 </head>
 

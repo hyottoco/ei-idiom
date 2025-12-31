@@ -734,6 +734,11 @@ function speak(text){
   u.rate = clamp(Number(state.rate) || 1.0, 0.1, 10);
   window.speechSynthesis.speak(u);
 }
+function speakCurrent(){
+  const real = currentRealIndex();
+  if(real === null) return;
+  speak(VOCAB[real].en);
+}
 
 /* =========================
    UI更新（✅ setUI相当）
@@ -812,8 +817,6 @@ function render(){
     meaningEl.textContent = "";
     nextBtn.textContent = "日本語訳を確認（答え合わせ）";
     missBox.classList.remove("show");
-    // 出題時に自動発音
-    speak(item.en);
   }else{
     // ✅ 答え
     meaningEl.textContent = item.ja;
@@ -837,6 +840,7 @@ function startOrAdvance(){
     state.started = true;
     state.phase = 0;
     render();
+    speakCurrent();   // ✅ ここでだけ発音
     return;
   }
 
@@ -849,13 +853,15 @@ function startOrAdvance(){
 
   // 答え→次の単語（phaseを0に戻す）
   if(state.idx >= state.shuffled.length - 1){
-    state.idx = 0;     // 最後なら先頭へ（好みで停止にもできる）
+    state.idx = 0;
   }else{
     state.idx++;
   }
   state.phase = 0;
   render();
+  speakCurrent();     // ✅ 次の問題に入った瞬間だけ発音
 }
+
 
 function hardReset(){
   state.idx = 0;
@@ -1003,13 +1009,19 @@ wrongOnlyToggle.addEventListener("change", () => {
   render();
 });
 
-// ✅ 復習チェックは「答え表示中（phase=1）」だけで使う
-missBox.addEventListener("click", (e) => {
-  // if(state.phase !== 1) return;
-  if(e.target && e.target.id === "missToggle") return;
-  missToggle.checked = !missToggle.checked;
-  missToggle.dispatchEvent(new Event("change"));
+missToggle.addEventListener("change", () => {
+  const real = currentRealIndex();
+  if(real === null) return;
+
+  if(missToggle.checked) state.wrongSet[real] = true;
+  else delete state.wrongSet[real];
+
+  updateTopUI();  // ← これで( )の数や表示だけ更新
+  saveState();    // ← 状態保存
+
+  // ※ render() は呼ばない（→ 発音しない）
 });
+
 missToggle.addEventListener("change", () => {
   // if(state.phase !== 1) return;
   const real = currentRealIndex();

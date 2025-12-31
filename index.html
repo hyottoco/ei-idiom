@@ -789,6 +789,10 @@ function render(){
 
   const real = currentRealIndex();
   updateTopUI();
+  // ✅ どのフェーズでも「今の単語」の復習ON/OFF表示に同期する
+  if(real !== null){
+    missToggle.checked = !!state.wrongSet[real];
+  }
 
   // 出題がない
   if(real === null){
